@@ -1,0 +1,81 @@
+\documentclass{article}
+
+\usepackage{minted,comment}
+\usemintedstyle{igor}
+\usemintedstyle{rainbow_dash}
+\renewcommand{\MintedPygmentize}{./magma.py}
+
+\usepackage{tcolorbox}
+
+\begin{document}
+
+\section*{Some Python code}
+\begin{minted}{python}
+import numpy as np
+
+def incmatrix(genl1,genl2):
+    M = None #to become the incidence matrix
+    M1 = bitxormatrix(genl1)
+    M2 = np.triu(bitxormatrix(genl2),1)
+    for i in range(m-1):
+        for j in range(i+1, m):
+            [r,c] = np.where(M2 == M1[i,j])
+            for k in range(len(r)):
+                VT[(i)*n + r[k]] = 1;
+                VT[(i)*n + c[k]] = 1;
+    return M
+\end{minted}
+
+\section*{Some Magma code}
+
+%\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma}
+
+//-----------------------------------------------------------------------
+// apply the Veronese map to a variety X over a weighted projective space
+
+function veronese(X)
+  P := AmbientSpace(X);
+  A := CoordinateRing(P);
+  lcm := LCM(Gradings(P)[1]);
+  R := BaseRing(X);
+  monos := [ x : x in MonomialsOfWeightedDegree(A, lcm) ];
+  R2 := PolynomialRing(R, #monos);
+  AssignNames(~R2, [Sprintf("{%o}", x) : x in monos ]);
+  P2 := ProjectiveSpace(R2);
+  h := map< P -> P2 | monos >;
+  Y := h(X);
+  return Y, h;
+end /* safe */ function;
+
+str := "a string with \" escaped double quote";
+'xor' := 'and';
+Attach("mySpecFile"); /* load
+                      /* intrinsics */
+n := &+ [ x[i] : i in [1..10] ]; // compute n
+assert not &xor [ IsEven(i) : i in [1..10] ]; // really?
+function binomial (n,m)
+  for i in [true..false] do
+    return Binomial(n,m);
+  end for;
+end function;
+\end{minted}
+
+
+\section*{Some Magma package code}
+\begin{minted}{magma}
+intrinsic myintrin (args) -> type
+  { documentation }
+  return &+ args;
+end intrinsic;
+
+intrinsic myintrin(a,b,c)  { documentation
+    of this
+    intrinsic procedure }
+  print a+b+c;
+end intrinsic;
+\end{minted}
+
+\end{document}
+
+
