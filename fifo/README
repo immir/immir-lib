@@ -1,0 +1,91 @@
+
+
+Note:
+
+  a.c can check consistency of a method
+  b.c is used to check "steady state" performance
+
+
+/*
+
+   Various conditions (indices taken modulo fifo->limit):
+
+   head == tail         => empty
+   head == tail + 1     => full
+   tail + 1 < head      => safe for reading
+   limit - 1            == capacity of fifo
+   tail - head          == size: current number of occupied slots
+   head - tail - 1      == available space (i.e., capacity - size)
+
+   Simple example:
+
+   #define FIFO_ITEM_TYPE int
+   #define FIFO_NAME ints
+   #include "fifo.h"
+   { ints_t fifo;
+     long capacity = 1000;
+     assert(ints_init(fifo, capacity) == 0);
+     assert(ints_capacity(fifo) == capacity);
+     assert(ints_avail(fifo) == capacity);
+     for (int i = 0; i < 1000; i++)
+       assert(ints_append(fifo, i) == 1);
+     assert(ints_append(fifo, 1000) == 0);
+     assert(ints_size(fifo) == capacity);
+     assert(ints_avail(fifo) == 0);
+     int j;
+     for (int i = 0; i < 1000; i++) {
+       assert(ints_pop(fifo, &j) == 1);
+       assert(j == i); }
+     assert(ints_pop(fifo, &j) == 0);
+     ints_destroy(fifo); }
+
+*/
+
+
+// from spsc
+
+static __attribute__((unused))
+long FIFO_TAKE(FIFO_TYPE fifo, FIFO_ITEM_TYPE *x, int64_t n) {
+  long h = atomic_load_explicit(&fifo->head, memory_order_acquire);
+  long t = atomic_load_explicit(&fifo->tail, memory_order_relaxed);
+  // in single-thread reading case, we are the reader, so whatever
+  // is available now is guaranteed to not change within this function
+  if (h == t) return 0;
+  long size = t - h;
+  if (size < 0) size += fifo->limit;
+  n = FIFO_MIN(n, size);
+  int64_t i = 0;
+  while (i < n) {
+    int64_t m = FIFO_MIN(n - i, fifo->limit - h);
+    memcpy(x + i, fifo->items + h, m * sizeof *x);
+    h = h+m == fifo->limit ? 0 : h+m;
+    i += m; }
+  atomic_store_explicit(&fifo->head, h, memory_order_release);
+  return n; }
+
+
+// from mpmc:
+
+static __attribute__((unused))
+int FIFO_TAKE(FIFO_TYPE fifo, FIFO_ITEM_TYPE *x, int64_t n) {
+  int ret = 0;
+  FIFO_LOCK(fifo); // acquire
+  do {
+    long h = atomic_load_explicit(&fifo->head, memory_order_relaxed);
+    long t = atomic_load_explicit(&fifo->tail, memory_order_relaxed);
+    long size = t - h;
+    if (size < 0) size += fifo->limit;
+    if (size == 0) break;
+    if (size < n) n = size;
+    int64_t i = 0;
+    while (i < n) {
+      int64_t m = n - i;
+      if (fifo->limit - h < m) m = fifo->limit - h;
+      memcpy(x + i, fifo->items + h, m * sizeof *x);
+      h = h+m == fifo->limit ? 0 : h+m;
+      i += m; }
+    atomic_store_explicit(&fifo->head, h, memory_order_relaxed);
+    ret = n;
+  } while (0);
+  FIFO_UNLOCK(fifo); // release
+  return ret; }

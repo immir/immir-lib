@@ -1,0 +1,34 @@
+#
+# ~/.bashrc
+#
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+export PRINTER=HP_Color_LaserJet_4700
+
+PS1='\u@\h \W |> '
+
+PATH=$PATH:.
+PATH=$PATH:$HOME/bin
+PATH=$PATH:$HOME/.local/bin
+PATH=$PATH:$HOME/.cabal/bin
+
+export FIGNORE=".sig"
+export EDITOR=emacs
+export VISUAL=emacs
+
+alias ls='ls --color=auto'
+alias zen="ssh -t immir@zen 'tmux a || tmux new'"
+alias vps="ssh vps1 'tmux a || tmux new'"
+alias grep='grep --color'
+alias purge='rm -f *~ #*'
+
+stty susp undef
+bind '"\C-z":"fg\015"'
+HISTIGNORE=fg
+
+export BC_ENV_ARGS='-l'
+
+export BAT_THEME=1337
+export TERM=xterm

@@ -1,0 +1,56 @@
+
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 2)
+(setq-default show-trailing-whitespace t)
+(defvaralias 'c-basic-offset 'tab-width)
+(defvaralias 'cperl-indent-level 'tab-width)
+
+(global-set-key "\M-#" 'compile)
+(global-set-key "\C-cl" 'goto-line)
+(global-set-key "%" 'match-paren)
+(defun match-paren (arg)
+  "Go to the matching paren if on a paren; otherwise insert %."
+  (interactive "p")
+  (cond ((looking-at "\\s\(") (forward-list 1) (backward-char 1))
+	((looking-at "\\s\)") (forward-char 1) (backward-list 1))
+	(t (self-insert-command (or arg 1)))))
+
+
+(require 'package)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-archives
+   (quote
+    (("gnu" . "http://elpa.gnu.org/packages/")
+     ("melpa-stable" . "http://stable.melpa.org/packages/"))))
+ '(package-selected-packages (quote (haskell-mode))))
+(package-initialize)
+;(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+; )
+(put 'set-goal-column 'disabled nil)
+
+(load-theme 'manoj-dark t)
+(put 'narrow-to-region 'disabled nil)
+
+(unless window-system
+  (custom-set-faces
+   '(default ((t (:background "unspecified-bg"))))))
+
+(load "rust-mode.el")
+(add-to-list 'auto-mode-alist '("\.rs\'" . rust-mode))
+
+
+(add-to-list 'load-path "/home/immir/magma/magma-mode")
+(require 'magma-mode)
+(add-to-list 'auto-mode-alist '("\\.m$" . magma-mode))
+(add-hook 'magma-mode-hook
+          (lambda ()
+            (setq indent-tabs-mode nil)
+            (setq tab-width 2)))

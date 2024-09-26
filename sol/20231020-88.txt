@@ -1,0 +1,37 @@
+
+ KS
+ 9D 6H
+ 7D 7H TH
+ 3S AD TS 9C
+ 2S QD KH AH AS
+ 5D 5C 3C 2C 4H 7S
+ 9S KC 4D 8S 5S 6D 2H
+
+ JS 3H 3D AC 7C QC TD QS 9H QH 2D JH 8H 6S 8C 4S 6C TC JC KD 4C 8D JD 5H
+
+
+ The replay of this daily challenge shows a 88 move solution
+ including 2 foundation back to tableau moves (in a row).
+
+ I can find a 88 long solution that don't require any such moves.
+
+
+| 1 - draw       | 19 - QS to KH  | 37 - 6C to F   | 55 - KC to --  | 73 - 9C to F   |
+| 2 - AS to F    | 20 - draw      | 38 - TS to JD  | 56 - draw      | 74 - TC to F   |
+| 3 - AH to F    | 21 - AC to F   | 39 - AD to F   | 57 - 4S to F   | 75 - JC to F   |
+| 4 - 2H to F    | 22 - draw      | 40 - 6D to 7S  | 58 - 5S to F   | 76 - QD to F   |
+| 5 - 8D to 9C   | 23 - JS to QH  | 41 - 5S to 6D  | 59 - 6D to F   | 77 - KD to F   |
+| 6 - 6H to 7S   | 24 - 3H to F   | 42 - 8S to 9D  | 60 - 7D to F   | 78 - draw      |
+| 7 - 9C to TH   | 25 - 4H to F   | 43 - draw      | 61 - draw      | 79 - QC to F   |
+| 8 - 9D to TS   | 26 - 2C to F   | 44 - draw      | 62 - 8H to F   | 80 - KC to F   |
+| 9 - KH to --   | 27 - 3C to F   | 45 - 2D to F   | 63 - 6S to F   | 81 - 9H to F   |
+| 10 - 7S to 8D  | 28 - TH to JS  | 46 - draw      | 64 - 7S to F   | 82 - TH to F   |
+| 11 - draw      | 29 - draw      | 47 - 7C to F   | 65 - 8D to F   | 83 - JS to F   |
+| 12 - JC to QD  | 30 - 4C to F   | 48 - draw      | 66 - 8S to F   | 84 - QS to F   |
+| 13 - draw      | 31 - 5C to F   | 49 - 3D to F   | 67 - 9D to F   | 85 - JH to F   |
+| 14 - draw      | 32 - JD to QS  | 50 - 4D to F   | 68 - TD to F   | 86 - QH to F   |
+| 15 - draw      | 33 - 5H to F   | 51 - 5D to F   | 69 - 9S to F   | 87 - KS to F   |
+| 16 - QH to KS  | 34 - draw      | 52 - QD to KC  | 70 - TS to F   | 88 - KH to F   |
+| 17 - draw      | 35 - 6H to F   | 53 - 2S to F   | 71 - JD to F   |
+| 18 - TD to JC  | 36 - 7H to F   | 54 - 3S to F   | 72 - 8C to F   |
+

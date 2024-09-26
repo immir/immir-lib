@@ -1,0 +1,175 @@
+
+atomic fetch and inc writer permission my_tail1
+while tail+1 != my_tail1 // uncontested: pass
+  atomic fetch tail (acquire?)
+// now it's my turn
+insert new object
+atomic fetch and inc tail (release)
+
+
+              | tail | head | tail1 | head1 |
+  thread *    | 0    | 0    | 0     | 0     |
+  thread 3    | 0    | 0    | 1     | 0     |   fetch_and_inc
+  thread 1    | 0    | 0    | 2     | 0     |   fetch_and_inc
+  thread 4    | 0    | 0    | 3     | 0     |   fetch_and_inc
+
+
+----------------------------------------------------------------------
+
+Note:
+
+  a.c can check consistency of a method
+  b.c is used to check "steady state" performance
+
+
+----------------------------------------------------------------------
+
+/* A multi-producer multi-consumer (MPMC) fifo implementation based on a fixed
+   length array of items.
+
+   This one uses an atomic "lock"...
+
+   Various conditions (indices taken modulo fifo->limit):
+
+   head == tail         => empty
+   head == tail + 1     => full
+   tail + 1 < head      => safe for reading
+   limit - 1            == capacity of fifo
+   tail - head          == size: current number of occupied slots
+   head - tail - 1      == available space (i.e., capacity - size) */
+
+----------------------------------------------------------------------
+
+New design:
+
+  spin: atomic swap   (head,0) -> (head,mod)
+    if successful,
+      add item
+      atomic update (head,mod) -> (head+1,0)
+
+  spin: atomic swap   (tail,0) -> (tail,mod)
+    if successful,
+      remove item
+      atomic update (tail,mod) -> (tail+1,0)
+
+32-bit each head/tail and 0/mod -> 64-bit atomic updates
+fifo size limited to 2^32 (not a problem)
+
+
+----------------------------------------------------------------------
+
+GOMP_CPU_AFFINITY="0 3 2 1"
+
+----------------------------------------------------------------------
+
+Check out Disruptor?
+
+  https://lmax-exchange.github.io/disruptor/
+
+----------------------------------------------------------------------
+
+submodules:
+
+  git submodule add path-to-git-repo
+
+when using for first time:
+
+  git submodule init
+  git submodule update
+
+to populate the submodule directory.
+
+----------------------------------------------------------------------
+
+Note: padding to avoid "false sharing" seems to hurt performance with
+lots of threads; by as much as 100% (i.e. double the cost per
+transaction).
+
+[this is for the spin-atomic-lock mpmc version that I used for lux]
+
+----------------------------------------------------------------------
+
+https://github.com/bittnkr/uniq
+
+?
+
+----------------------------------------------------------------------
+from: https://stackoverflow.com/questions/871234/circular-lock-free-buffer
+
+The implementation in the boost library is worth considering. It's
+easy to use and fairly high performance. I wrote a test & ran it on a
+quad core i7 laptop (8 threads) and get ~4M enqueue/dequeue operations
+a second. Another implementation not mentioned so far is the MPMC
+queue at:
+
+http://moodycamel.com/blog/2014/detailed-design-of-a-lock-free-queue
+
+I have done some simple testing with this implementation on the same
+laptop with 32 producers and 32 consumers. It is, as advertised,
+faster that the boost lockless queue.
+
+----------------------------------------------------------------------
+
+liblfds might be worth checking out:
+
+https://liblfds.org/
+https://liblfds.org/pages/git.html
+
+----------------------------------------------------------------------
+
+Some timings...
+
+[mjsmi36@ucs2 fifo med 38] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: mpmc single atomic spin-lock unpadded (fifo.h)
+check agrees between writers and readers
+average writer cost = 316340.99 ticks/push
+average reader cost = 616591.47 ticks/push
+average transaction cost = 417407.04 ticks
+done
+
+[mjsmi36@ucs2 fifo med 28] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: 1024core mpmc (fifo-1024core.h)
+check agrees between writers and readers
+average writer cost = 92295.03 ticks/push
+average reader cost = 282353.28 ticks/push
+average transaction cost = 138854.15 ticks
+done
+
+[mjsmi36@ucs2 fifo low 21] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: mpmc single pthread mutex (fifo-mutex.h)
+check agrees between writers and readers
+average writer cost = 61736.48 ticks/push
+average reader cost = 45626.30 ticks/push
+average transaction cost = 52538.27 ticks
+done
+
+[mjsmi36@ucs2 fifo idle 1] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: mpmc double pthread mutex (fifo-2mutex.h)
+check agrees between writers and readers
+average writer cost = 102989.12 ticks/push
+average reader cost = 93658.42 ticks/push
+average transaction cost = 98124.27 ticks
+done
+
+[mjsmi36@ucs2 fifo idle 1] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: mpmc double pthread mutex padded (fifo-2mutex-p.h)
+check agrees between writers and readers
+average writer cost = 67958.51 ticks/push
+average reader cost = 69798.99 ticks/push
+average transaction cost = 68871.03 ticks
+done
+
+[mjsmi36@ucs2 fifo idle 1] ./a R=32 W=32 N=128000 M=100000
+./a W=32 R=32 N=128000 M=100000 T=1
+implementation: mpmc single pthread mutex padded (fifo-mutex-p.h)
+check agrees between writers and readers
+average writer cost = 58790.07 ticks/push
+average reader cost = 43957.52 ticks/push
+average transaction cost = 50341.79 ticks
+done
+
