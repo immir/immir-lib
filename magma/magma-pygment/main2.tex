@@ -1,0 +1,81 @@
+\documentclass{article}
+
+\title{Magma Pygments}
+\author{`Immir'}
+\date{March 2023}
+
+\usepackage[skins,minted]{tcolorbox}
+\definecolor{mintbg}{gray}{0.93}
+\usemintedstyle{tango}
+\setminted[magma.py:Magma -x]{mathescape=true}
+\newtcblisting{magma}[2][]{#1,title=#2,
+    listing engine=minted, minted language=magma.py:Magma -x,
+    enhanced, listing only, fonttitle=\small,
+    colback=mintbg, colbacktitle=white, coltitle=black,
+    titlerule=1pt, boxrule=1pt,
+    attach boxed title to top right = {yshift=-8pt},
+    colframe={gray!80}}
+
+\begin{document}
+\maketitle
+
+% ----------------------------------------------------------------------
+\section*{Introduction}
+
+This is a minimal(-ish) example using the {\LaTeX} \texttt{tcolorbox} package.
+
+\begin{magma}{intrin.m}
+intrinsic '@' (x, f) -> .
+  { Allow user to evaluate polynomials using usual notation: $f(x)$. }
+  return Evaluate(f, x);
+end intrinsic;
+
+intrinsic PohligHellmanPrimePower (g,h,p,e) -> .
+  { Compute discrete log $x$ where $g^x = h$ and $g$ has order $p^e$. }
+  return e eq 1 select Rep({ d : d in [0..p-1] | g^d eq h })
+    else (x0 + p^e0*x1
+          where x1 := recurse(g^(p^e0), h/g^x0,   p, e1)
+          where x0 := recurse(g^(p^e1), h^(p^e1), p, e0)
+          where e1 := e - e0
+          where e0 := e div 2
+          where recurse := $$);
+end intrinsic;
+\end{magma}
+
+Some user code:
+
+\begin{magma}{}
+P<x> := PolynomialRing(Rationals());
+f := x^5 + x + 1;
+for a in [1..10] do f(1); end for;
+bool := true;
+int := 17;
+\end{magma}
+
+Transcript of a session:
+
+\begin{magma}{}
+> P<x> := PolynomialRing(Rationals());
+> f := x^3 + x + 1;
+> Evaluate(f,1);
+3
+> f(1);
+>> f(1);
+    ^
+Runtime error in '@': Bad argument types
+Argument types given: RngIntElt, RngUPolElt[FldRat]
+
+> Attach("intrin.m");
+> f(1);
+3
+> Z := Integers(2^16384);
+> g := Z!3;
+> h := g^RandomBits(16384);
+> time x := PohligHellmanPrimePower(g,h,2,16382);
+Time: 15.930
+> g^x eq h;
+true
+\end{magma}
+
+
+\end{document}

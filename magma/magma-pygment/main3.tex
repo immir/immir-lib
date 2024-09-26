@@ -1,0 +1,37 @@
+\documentclass{article}
+
+\title{Magma Pygments}
+\author{`Immir'}
+\date{March 2023}
+
+\usepackage{minted}
+\renewcommand{\MintedPygmentize}{./magma.py}
+
+\begin{document}
+\maketitle
+
+% ----------------------------------------------------------------------
+\section*{Introduction}
+
+This is a minimal example using the executable \texttt{magma.py}
+script (NB: this one won't work in Overleaf).
+
+\begin{minted}{magma}
+intrinsic '@' (x, f) -> .
+  { Allow user to evaluate polynomials using usual notation: $f(x)$. }
+  return Evaluate(f, x);
+end intrinsic;
+
+intrinsic PohligHellmanPrimePower (g,h,p,e) -> .
+  { Compute discrete log $x$ where $g^x = h$ and $g$ has order $p^e$. }
+  return e eq 1 select Rep({ d : d in [0..p-1] | g^d eq h })
+    else (x0 + p^e0*x1
+          where x1 := recurse(g^(p^e0), h/g^x0,   p, e1)
+          where x0 := recurse(g^(p^e1), h^(p^e1), p, e0)
+          where e1 := e - e0
+          where e0 := e div 2
+          where recurse := $$);
+end intrinsic;
+\end{minted}
+
+\end{document}

@@ -1,0 +1,287 @@
+\documentclass{article}
+
+\title{Magma Pygments}
+\author{`Immir'}
+\date{March 2023}
+
+\usepackage[T1]{fontenc}
+\usepackage[margin=5cc]{geometry}
+\parindent=0pt
+\parskip=1ex
+
+\usepackage{minted,xcolor}
+\usemintedstyle{lovelace}
+\definecolor{mintbg}{gray}{0.95}
+\setminted{bgcolor=mintbg, frame=lines, rulecolor=\color{gray!50}}
+\setminted[magma.py:Magma -x]{mathescape=true} % math mode in comments
+
+\begin{document}
+\maketitle
+
+% ----------------------------------------------------------------------
+\section{Introduction}
+
+This is a demo of a simple Pygments~\cite{pygments} lexer for the
+language of the computer algebra system Magma~\cite{magma}.  Together
+with the \LaTeX{} \texttt{minted}~\cite{minted} package, this allows
+syntax-highlighted Magma source code to typeset in documents.
+
+In the Appendix one can find the Python source for this lexer --
+formatted using the standard Pygments lexer for Python for comparison
+with the Magma output in the examples following.
+
+At some point a \texttt{git} repo will likely be published for anyone
+wishing to contribute. For the moment, anyone who knows \textit{Immir}
+knows how to contact him$\ldots$
+
+% ----------------------------------------------------------------------
+\section{Some Magma examples}
+
+Some intrinsics from a small Magma package:
+
+\begin{minted}{magma.py:Magma -x}
+// file: intrin.m
+
+intrinsic '@' (x, f::RngUPolElt) -> .
+  { Allow user to evaluate polynomials using usual notation: $f(x)$. }
+  return Evaluate(f, x);
+end intrinsic;
+
+map   := func< f, xs | [ f(x) : x in Eltseq(xs) ] >;
+fst   := func< xs | xs[1] >;
+snd   := func< xs | xs[2] >;
+
+intrinsic CRT (T::SeqEnum[Tup]) -> .
+  { Compute CRT from sequence of pairs <residue,modulus>. }
+  return CRT(map(fst,T), map(snd,T));
+end intrinsic;
+
+intrinsic PohligHellman (g,h,p::RngIntElt,e::RngIntElt) -> RngIntElt
+  { Compute discrete log $x$ where $g^x = h$ and $g$ has order $p^e$. }
+  return e gt 1 select x0 + p^e0*x1
+      where x1 := recurse(g^(p^e0), h/g^x0,   p, e1)
+      where x0 := recurse(g^(p^e1), h^(p^e1), p, e0)
+      where e1 := e - e0
+      where e0 := e div 2
+      where recurse := $$
+    else Rep({ d : d in [0..p-1] | g^d eq h });
+end intrinsic;
+
+intrinsic PohligHellman (g,h,n::RngIntElt) -> RngIntElt
+  { Compute discrete log $x$ from $g^x = h$ where $g$ has (hopefully smooth!) order $n$. }
+  return CRT([ <PohligHellman(g^(n div p^e),h^(n div p^e),p,e), p^e>
+                where p,e := Explode(f) : f in Factorisation(n) ]);
+end intrinsic;
+
+intrinsic PohligHellman (g,h) -> RngIntElt
+  { Compute discrete log $x$ from $g^x = h$ where $g$ has hopefully smooth order. }
+  return PohligHellman(g,h,Order(g));
+end intrinsic;
+\end{minted}
+
+Some user code:
+
+\begin{minted}{magma.py:Magma -x}
+PSL27 := PermutationGroup< 8 | (2,3,5)(6,7,8), (1,2,4)(3,5,6) >;
+S := MatrixAlgebra< FiniteField(2), 3 |
+       [ 0,1,0,  1,1,1,  0,0,1 ], [ 1,1,1,  0,1,1,  0,1,0 ] >;
+M := GModule(PSL27, S);
+M: Maximal;
+
+L := Lattice("E", 8);
+S := ShortestVectors(L);
+#S; // 120
+KissingNumber(L); // 240
+w := RSpace(RationalField(), 8) ! [ -1/6, 1/6, -1/2, -1/6, 1/6, -1/2, 1/6, -1/2 ];
+C, d := ClosestVectors(L, w);
+d; // 8/9
+{ Norm(v): v in C }; // { 0, 2 }
+{ Norm(v - w): v in C }; // { 8/9 }
+\end{minted}
+
+Transcript of a session:
+
+\begin{minted}{magma.py:Magma -x}
+> P<x> := PolynomialRing(Rationals());
+> f := x^3 + x + 1;
+> Evaluate(f,1);
+3
+> f(1); // this doesn't work?! ridiculous!
+>> f(1);
+    ^
+Runtime error in '@': Bad argument types
+Argument types given: RngIntElt, RngUPolElt[FldRat]
+
+> Attach("intrin.m");
+> f(1);
+3
+> g := Integers(2^16384)!3;
+> h := g^RandomBits(16384);
+> time x := PohligHellman(g,h);
+Time: 17.130
+> g^x eq h;
+true
+> PohligHellman(g,g^1337) where g is Random(GL(3,127));
+1337
+\end{minted}
+
+
+% ----------------------------------------------------------------------
+\section{Installation}
+
+There are at least 3 simple ways to use this ``package'' with the
+{\LaTeX} \texttt{minted} package. In all cases, you have to run with
+the \texttt{-shell-escape} to \LaTeX{}; \textit{e.g.,}
+%
+\begin{minted}{bash}
+bash$ pdflatex -shell-escape file.tex && xpdf file.pdf
+\end{minted}
+
+
+\subsection{Local copy of lexer}
+
+Place the \texttt{magma.py} file in the working directory and use
+
+\begin{minted}[escapeinside=||]{tex}
+  \begin{minted}{magma.py:Magma -x}
+    // your magma code here
+  \end{minted||}
+\end{minted}
+
+
+\subsection{Execute the lexer script}
+
+If you will be using a lot of \texttt{magma} code snippets, it is
+unpleasant to have to use the \texttt{magma.py:Magma -x} name over and
+over again. An alternative is to give the \texttt{magma.py} script
+execute permission, then in the preamble after loading \texttt{minted}
+do the following:
+
+\begin{minted}{tex}
+  \renewcommand{\MintedPygmentize}{./magma.py}
+\end{minted}
+
+Now your code segments can use the simpler \texttt{magma} format:
+
+\begin{minted}[escapeinside=||]{tex}
+  \begin{minted}{magma}
+    // your magma code here
+  \end{minted||}
+\end{minted}
+
+
+\subsection{Install globally}
+
+Details coming later.
+
+
+% ----------------------------------------------------------------------
+\begin{thebibliography}{9}
+
+\bibitem{pygments} \texttt{https://pygments.org}.
+
+\bibitem{magma} Wieb Bosma, John Cannon, and Catherine Playoust, The
+  Magma algebra system. I. The user language, J. Symbolic Comput., 24
+  (1997), 235–265.
+
+\bibitem{minted} \texttt{https://github.com/gpoore/minted}.
+
+\end{thebibliography}
+
+\appendix
+
+% ----------------------------------------------------------------------
+\section{Magma.py}
+
+Source code for the current version of \texttt{magma.py}.
+
+\inputminted{python}{magma.py}
+
+
+% ----------------------------------------------------------------------
+\section{Tests}
+
+% define any macros needed in documentation
+\def\SL{\mathop{\mathrm{SL}}}
+
+Here are some tests based on code extracted from various Magma packages.
+
+\begin{minted}{magma.py:Magma -x}
+intrinsic Conjugates(G::Grp, H::Grp: Limit := 10000000) -> {}
+  {The set of conjugates of H by elements of G}
+  require Type(G) eq Type(H) and H subset G:
+	  "Argument 2 is not a subgroup of argument 1";
+  N := Normalizer(G, H);
+  require Index(G, N) le Limit:
+    "Number of conjugates of H in G is more than " cat Sprint(Limit);
+  if Type(G) eq GrpPC then
+    return { PowerGroup(G) | H^t: t in Transversal(G, N) };
+  end if;
+  return {H^t: t in Transversal(G, N)};
+end intrinsic;
+
+/* Given an ideal corresponding to an absolutely irreducible trace tuple t and hence
+ * an absolutely irreducible representation $\Delta\colon F_2 \to \SL(3,K)$, find a tuple of
+ * nine words $(w_1, \ldots, w_9)$ such that $(\Delta(w_1), \ldots, \Delta(w_9))$ is a basis of $K^{3 \times 3}$.
+ *
+ * Note that $(\Delta(w_1), \ldots, \Delta(w_9))$ is a basis if and only if the matrix
+ * $(\mathop{tr}(\Delta(w_i)\Delta(w_j)))_{i,j}$ has full rank, hence non-zero determinant.
+ */
+L3FindBasis := function(I)
+  if exists(b){ b : b in possibleBases | GramMatrixDeterminant(b, I) ne 0 } then
+    return b;
+  end if;
+  error "not absolutely irreducible";
+end /*safe*/ function;
+
+intrinsic IsInTwistedForm( x::GrpLieElt, c::OneCoC ) -> BoolElt
+  {Returns true iff $x\in G(K)$ is an element of the twisted group of Lie type $G_c(k)$}
+  G := Parent(x);
+  require G cmpeq Domain(Group(GammaGroup(c)))
+       : "Parent(x) and the cocycle do not match";
+  Gamma, m := ActingGroup(GammaGroup(c));
+  return forall{ i : i in [1..Ngens(Gamma)] |
+                 x eq x @ FieldAutomorphism(G, m(Gamma.i)) @ c(Gamma.i) };
+end intrinsic;
+
+intrinsic Bezoutian(H::HypGeomData) -> RngIntElt // e.g. [1,2,3],[5] -> 5
+  {The resultant of the defining polynomials of the hypergeometric data}
+  f,g:=DefiningPolynomials(H); return Resultant(f,g); end intrinsic;
+\end{minted}
+
+
+Here are some examples for testing edge cases.
+
+\begin{minted}{magma.py:Magma -x}
+intrinsic myintrin1(G :: GrpMat[FldFin]) -> {}, [], {RngIntElt}
+  { some documentation }
+  return {}, [], 0; end intrinsic;
+
+intrinsic myproc(x,y,z::{})
+  { documentation }
+end intrinsic;
+
+intrinsic myintrin2(x::{}, y::{[]}) -> {}
+  { some documentation }
+  return {}; end intrinsic;
+
+intrinsic myintrin3(G:: GrpMat : Degree := "All", Set := {}) -> BoolElt, {}
+  { { { { some } more } documentation { with { [ crazy ] braces } } } }
+  return false; end intrinsic;
+\end{minted}
+
+Here are examples of valid Magma code that fail to format correctly;
+these examples are currently considered too extreme to worry about.
+
+\begin{minted}{magma.py:Magma -x}
+// incorrectly matches braces within /* */ comment
+intrinsic junk(a) /* {} */ { docs }
+  return a+1; end intrinsic;
+
+// can't have comment between intrinsic name and open paren
+intrinsic junk /* */ (a) /* comment
+  */ { doc } printf "a = %o\n", a; end intrinsic;
+\end{minted}
+
+
+\end{document}
