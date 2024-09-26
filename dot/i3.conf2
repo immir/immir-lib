@@ -1,0 +1,85 @@
+
+set $mod Mod1
+
+#font pango:monospace 14
+font pango:DejaVu Sans Mono 14
+
+assign [class="chromium-browser"] 2
+assign [class="thunderbird"] 3
+
+exec xset s off s noblank
+exec setxkbmap -option ctrl:nocaps
+exec gnome-terminal
+exec chromium-browser
+exec thunderbird
+
+floating_modifier $mod
+
+bindsym $mod+Return exec gnome-terminal
+bindsym $mod+Shift+q kill
+bindsym $mod+d exec --no-startup-id dmenu_run -fn "Monospace-18"
+
+set $lock i3lock -e -f -c '#4040c0' -i ~/etc/12monkeys-blue-big.png
+exec bash ~/bin/locker $lock -n > /tmp/.locker.log 2>&1
+bindsym Ctrl+Mod1+l exec $lock
+bindsym Scroll_Lock exec $lock
+
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exit
+
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+bindsym $mod+h split h
+bindsym $mod+v split v
+
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+set $ws10 "10"
+
+# switch to workspace
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
+bindsym $mod+9 workspace number $ws9
+bindsym $mod+0 workspace number $ws10
+
+# move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
+bindsym $mod+Shift+9 move container to workspace number $ws9
+bindsym $mod+Shift+0 move container to workspace number $ws10
+
+bar {
+        status_command i3status
+}
