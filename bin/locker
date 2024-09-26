@@ -1,0 +1,31 @@
+#!/bin/bash
+
+lockcmd=${@:-i3lock}
+echo "lock command: $lockcmd"
+idletime=300
+
+touch /tmp/.{,last_}input
+cmd='stat --printf="%s"'
+t=0
+while true
+do
+    echo idle running t=$t
+
+    timeout 1 xinput test-xi2 --root > /tmp/.input
+    if [[ `eval $cmd /tmp/.input` == `eval $cmd /tmp/.last_input` ]]
+    then
+        let t++
+    else
+        t=0
+    fi
+
+    mv -f /tmp/.{,last_}input
+
+    if [[ $t -ge $idletime ]]
+    then
+        echo "user has gone idle - locking screen"
+        $lockcmd # runs in foreground, so suspends this script
+        t=0
+    fi
+
+done
