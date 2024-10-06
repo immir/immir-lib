@@ -1,6 +1,6 @@
 #!/bin/bash
 
-lockcmd=${@:-i3lock}
+lockcmd=${@:-i3lock --nofork}
 echo "lock command: $lockcmd"
 idletime=300
 
