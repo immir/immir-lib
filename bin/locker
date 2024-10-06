@@ -24,7 +24,7 @@ do
     if [[ $t -ge $idletime ]]
     then
         echo "user has gone idle - locking screen"
-        $lockcmd # runs in foreground, so suspends this script
+        $lockcmd # should run in foreground, so suspends this script
         t=0
     fi
 
