@@ -61,8 +61,8 @@
 
   var M = [[1,1,1,1]].concat(
       d3.range(1,4).map(
-          i => d3.range(1,5).map(
-              j => 2*cos(2*pi*i*(2*j-1)/16))))
+          i => d3.range(1,9,2).map(
+              j => 2*cos(2*pi*i*j/16))))
 
   var x2 = 0, x3 = 0
 
@@ -75,13 +75,6 @@
       x3 = this.value
       d3.select('#x3value').text(x3)
       update() })
-</script>
-
-<div>
-  <p> TODO: make a square coordinate box for (x2,x3) instead of sliders
-</div>
-
-<script>
 
   var F = fld => obj => obj[fld]
   var compose = (g,h) => (d) => g(h(d))
