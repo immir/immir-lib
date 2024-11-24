@@ -1,11 +1,11 @@
-<!DOCTYPE html>
-<html lang='en'>
-<meta charset='utf-8'>
-<title>Projection of covering for Q_[2]</title>
-<h1 class='center'>Projection of covering for Q_[2]</h1>
+<!doctype html>
+<title>Q_[2] covering</title>
+<body>
 
-<script src='http://d3js.org/d3.v4.min.js' charset='utf-8'></script>
+<script src='http://d3js.org/d3.v4.min.js'></script>
 <script src="https://d3js.org/d3-selection-multi.v0.4.min.js"></script>
+
+<script> d3.select('body').append('h1').text(d3.select('title').text()) </script>
 
 <script>
   /*
@@ -28,6 +28,7 @@
 
 <style>
   body { background: #ddd; font-size: 100%; padding: 1em; }
+  h1 { text-align: center; }
   path { fill: none; stroke:#000; stroke-width:3px; }
   circle { fill: #ff0; opacity: 0.66; stroke: #000; strike-width: 2px; }
   svg { background: #ccc; }
@@ -54,6 +55,13 @@
 </div>
 
 <script>
+  var pi = Math.PI, cos = Math.cos, n = 2**4
+
+  var M = [[1,1,1,1]].concat(
+      d3.range(1,4).map(
+          i => d3.range(1,5).map(
+              j => 2*cos(2*pi*i*(2*j-1)/n))))
+
   var x2 = 0, x3 = 0
 
   d3.select("#x2").on("input", function(d) {
