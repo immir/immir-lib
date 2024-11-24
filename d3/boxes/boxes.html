@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang='en'>
+<meta charset='utf-8'>
+<title>Projection of covering for Q_[2]</title>
+<h1 class='center'>Projection of covering for Q_[2]</h1>
+
+<script src='http://d3js.org/d3.v4.min.js' charset='utf-8'></script>
+<script src="https://d3js.org/d3-selection-multi.v0.4.min.js"></script>
+
+<script>
+  /*
+    Input format:
+
+    coord [1,2,3,4] [1,2,3,4]   -- coordinate space box, piece of fund. domain
+    bound [1,2,3,4] [1,2,3,4]   -- bounding box in MS space
+    cull [1,2,3,4] [1,2,3,4]    -- culled box
+    good [1,2,3,4] [1,2,3,4] [1,2,3,4] ....  -- good box, with multiple CS points
+
+    Also, input for the transformation CS -> MS:
+
+    [ [1,2,3,4],
+      [1,2,3,4],
+      [1,2,3,4],
+      [1,2,3,4] ]
+
+   */
+</script>
+
+<style>
+  body { background: #ddd; font-size: 100%; padding: 1em; }
+  path { fill: none; stroke:#000; stroke-width:3px; }
+  circle { fill: #ff0; opacity: 0.66; stroke: #000; strike-width: 2px; }
+  svg { background: #ccc; }
+  .center { display: flex; align-items: center; justify-content: center; }
+  .grid line { stroke: #aaa; shape-rendering: crispEdges; }
+  .grid path { stroke-width: 0; }
+  .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
+  .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
+  .hyperboloids { fill: #ff8; stroke: #000; opacity: 0.5; }
+  .vbox { display: flex; flex-direction: column; align-items: center; }
+</style>
+
+<div id='svg-parent' class='center'></div>
+
+<div class='slidecontainer center'>
+  <div class='vbox'>
+    <input id='x2' type='range' min='-2' max='2' step='0.01' value='0' class='slider'>
+    <span>x2 = <span id='x2value'>-</span></span>
+  </div>
+  <div class='vbox'>
+    <input id='x3' type='range' min='-2' max='2' step='0.01' value='0' class='slider'>
+    <span>x3 = <span id='x3value'>-</span></span>
+  </div>
+</div>
+
+<script>
+  var x2 = 0, x3 = 0
+
+  d3.select("#x2").on("input", function(d) {
+      x2 = this.value
+      d3.select('#x2value').text(x2)
+      update() })
+
+  d3.select("#x3").on("input", function(d) {
+      x3 = this.value
+      d3.select('#x3value').text(x3)
+      update() })
+</script>
+
+<div>
+  <p> TODO: make a square coordinate box for (x2,x3) instead of sliders
+</div>
+
+<script>
+
+  var F = fld => obj => obj[fld]
+  var compose = (g,h) => (d) => g(h(d))
+
+  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
+      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i])),
+      vadd = zipWith((x,y) => x+y),
+      vsub = zipWith((x,y) => x-y),
+      vmul = zipWith((x,y) => x*y),
+      vabs = (xs) => xs.map(Math.abs),
+      vmin = (xs) => Math.min(...xs),
+      vmax = (xs) => Math.max(...xs)
+
+  var margin = {top: 0, right: 0, bottom: 0, left: 0},
+      width = 600 - margin.left - margin.right,
+      height = 600 - margin.top - margin.bottom
+
+  var svg = d3.select('#svg-parent')
+      .append('div')
+        .append('svg')
+          .attr('width', width + margin.left + margin.right)
+          .attr('height', height + margin.top + margin.bottom)
+          .call(d3.zoom().on('zoom', () => svg.attr('transform', d3.event.transform)))
+        .append('g')
+          .attr('transform',
+                'translate(' + margin.left + ',' + margin.top + ')');
+
+  var x = d3.scaleLinear().range([0,width]).domain([-5,5]),
+      y = d3.scaleLinear().range([height,0]).domain([-5,5]),
+      line = d3.line().x(compose(x,F(0))).y(compose(y,F(1)))
+
+  { var grid = svg.append('g').attr('class', 'grid')
+    grid.append('g').call(d3.axisBottom().scale(x).tickSizeInner(height))
+    grid.append('g').call(d3.axisRight().scale(y).tickSizeInner(width)) }
+
+  var dx = (x0,x1) => x(x1) - x(x0), // for rectangle width (user -> svg)
+      dy = (y0,y1) => y(y0) - y(y1)  //          and  height (user -> svg)
+
+  svg.append('circle')
+    .attr('r', 10)
+    .attr('cx', x(0))
+    .attr('cy', y(0))
+
+  var box_attrs = { // can be reused for all our box types
+      class: 'box',
+      x: d => x(d.pt[0]),
+      y: d => y(d.pt[1]),
+      width: d => dx(0, d.sides[0]),
+      height: d => dy(0, d.sides[1]) }
+
+  var good_boxes = [ { pt: [-1,-1,0,0], sides: [0.5,0.25,2,2] },
+                     { pt: [-2,-1.5,0,0], sides: [0.25,0.25,1,1] },
+                     { pt: [-3,-1.8,0,0], sides: [0.25,0.25,0.5,0.5] } ]
+
+  var culled_boxes = [ { pt: [1,1,0,0], sides: [0.333,0.333,2,2] },
+                       { pt: [-3,2,0,0], sides: [0.25,0.25,1,1] } ]
+
+  var bbox   = svg.append('g').attr('class', 'bounding-box')
+  var gboxes = svg.append('g').attr('class', 'good-boxes')
+  var cboxes = svg.append('g').attr('class', 'culled-boxes')
+  var hypers = svg.append('g').attr('class', 'hyperboloids')
+
+  // xs.concat(ys)
+
+  function update () {
+
+      var is_visible = (d) =>
+          x2 >= d.pt[2] && x2 <= d.pt[2] + d.sides[2] &&
+          x3 >= d.pt[3] && x3 <= d.pt[3] + d.sides[3];
+
+      d3.select('#x2value').text(x2)
+      d3.select('#x3value').text(x3)
+
+      var hyp = []
+
+      var c = d3.range(0, 5, 0.1).map((d,i) => { [d, Math.sin(d)] })
+      hypers.selectAll('path')
+          .datum(c)
+          .enter()
+          .append('path')
+
+      gboxes.selectAll('rect')
+          .remove()
+      gboxes.selectAll('rect')
+          .data(good_boxes)
+          .enter()
+          .filter(is_visible)
+          .append('rect')
+          .attrs(box_attrs)
+
+      cboxes.selectAll('rect')
+          .remove()
+      cboxes.selectAll('rect')
+          .data(culled_boxes)
+          .enter()
+          .filter(is_visible)
+          .append('rect')
+          .attrs(box_attrs)
+  }
+
+  update()
+
+</script>
