@@ -54,13 +54,15 @@
   </div>
 </div>
 
+<div id='x23box' class='center'></div>
+
 <script>
-  var pi = Math.PI, cos = Math.cos, n = 2**4
+  var pi = Math.PI, cos = Math.cos
 
   var M = [[1,1,1,1]].concat(
       d3.range(1,4).map(
           i => d3.range(1,5).map(
-              j => 2*cos(2*pi*i*(2*j-1)/n))))
+              j => 2*cos(2*pi*i*(2*j-1)/16))))
 
   var x2 = 0, x3 = 0
 
@@ -118,10 +120,33 @@
   var dx = (x0,x1) => x(x1) - x(x0), // for rectangle width (user -> svg)
       dy = (y0,y1) => y(y0) - y(y1)  //          and  height (user -> svg)
 
-  svg.append('circle')
-    .attr('r', 10)
-    .attr('cx', x(0))
-    .attr('cy', y(0))
+  {
+      let width = 100, height = 100
+      var svgx23 = d3.select('#x23box')
+          .append('div')
+          .append('svg')
+          .attrs({width: width, height: height})
+
+      let x = d3.scaleLinear().range([0,width]).domain([-2,2]),
+          y = d3.scaleLinear().range([height,0]).domain([-2,2])
+
+      const dragHandler = d3.drag().on('drag', dragged)
+
+      function dragged() {
+        var current = d3.select(this)
+        current.attrs({cx: d3.event.x, cy: d3.event.y})
+        x2 = x.invert(d3.event.x), x3 = y.invert(d3.event.y)
+        update() }
+
+      var circle = svgx23.append('circle')
+          .attr('r', 5)
+          .attr('cx', x(0))
+          .attr('cy', y(0))
+          .call(dragHandler)
+
+      function circle_update () {
+          circle.attr('cx', x(x2)).attr('cy',y(x3)) }
+  }
 
   var box_attrs = { // can be reused for all our box types
       class: 'box',
@@ -150,8 +175,9 @@
           x2 >= d.pt[2] && x2 <= d.pt[2] + d.sides[2] &&
           x3 >= d.pt[3] && x3 <= d.pt[3] + d.sides[3];
 
-      d3.select('#x2value').text(x2)
-      d3.select('#x3value').text(x3)
+      d3.select('#x2value').text(Number(x2).toFixed(2))
+      d3.select('#x3value').text(Number(x3).toFixed(2))
+      circle_update()
 
       var hyp = []
 
