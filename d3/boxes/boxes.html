@@ -78,7 +78,7 @@
       if (is_vec(v) && is_num(w)) return v.map(x => x*w)
       if (is_vec(v) && is_vec(w)) return zipWith((x,y) => x*y)(v, w)
       if (is_vec(v) && is_mat(w)) {
-          wt = w.transpose()
+          wt = transpose(w)
           return d3.range(0,wt.length).map(i => dot(v, wt[i])) }
       throw new Error(`cannot mul v,w`) }
 
@@ -115,14 +115,11 @@
 
   Array.prototype.le = function(w) { return sub(this,w).filter(x => x > 0).length == 0 }
   Array.prototype.ge = function(w) { return sub(this,w).filter(x => x < 0).length == 0 }
-
   Array.prototype.mul = function(w) { return mul(this, w) }
   Array.prototype.div = function(w) { return div(this, w) }
   Array.prototype.add = function(w) { return add(this, w) }
   Array.prototype.sub = function(w) { return sub(this, w) }
   Array.prototype.transpose = function () { return transpose(this) }
-
-  // this will stop us screwing up:
   Array.prototype.toString = function () { throw new Error('toString disabled for Array!') }
 
   var F = fld => obj => obj[fld]
@@ -310,7 +307,6 @@
               v1 = sub(v1, mul(v1[i], v0))
               v1 = div(v1, v1[j])
               v0 = sub(v0, mul(v0[j], v1))
-              // var take = pt => pt.ge(w0) && pt.le(w2)
               let take = (pt) => { return pt.ge(sub(w0,ε)) && pt.le(add(w2,ε)) }
               { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
               { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
