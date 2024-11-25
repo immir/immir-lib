@@ -31,13 +31,13 @@
   h1 { text-align: center; }
   path { fill: none; stroke:#000; stroke-width:3px; }
   circle { fill: #ff0; opacity: 0.66; stroke: #000; strike-width: 2px; }
-  svg { background: #ccc; }
+  svg { background: #fff; }
   .center { display: flex; align-items: center; justify-content: center; }
   .grid line { stroke: #aaa; shape-rendering: crispEdges; }
   .grid path { stroke-width: 0; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
-  .hyperboloids { stroke: #000; opacity: 0.5; stroke-width: 1; }
+  .hyperboloids { stroke: #000; opacity: 0.9; stroke-width: 1; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
 </style>
@@ -58,6 +58,8 @@
 <div id='x23box' class='center'></div>
 
 <script>
+  var ε = 1e-12
+
   var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
       zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i]))
 
@@ -66,33 +68,59 @@
   var is_vec = x => typeof(x) == 'object' && typeof(x[1]) == 'number'
   var is_mat = x => typeof(x) == 'object' && typeof(x[1]) == 'object'
 
-  var dot = (v,w) => (v*w).reduce((x,y) => x+y)
+  var dot = (v,w) => zipWith((x,y) => x*y)(v, w).reduce((x,y) => x+y)
 
-  Array.prototype.transpose = function () {
-      return this[0].map((_, i) => this.map(row => row[i])) }
+  transpose = function (m) {
+      return m[0].map((_, i) => m.map(row => row[i])) }
 
   function mul (v,w) {
       if (is_num(v) && is_vec(w)) return w.map(x => x*v)
-      if (is_num(w) && is_vec(v)) return v.map(x => x*w)
+      if (is_vec(v) && is_num(w)) return v.map(x => x*w)
+      if (is_vec(v) && is_vec(w)) return zipWith((x,y) => x*y)(v, w)
       if (is_vec(v) && is_mat(w)) {
           wt = w.transpose()
           return d3.range(0,wt.length).map(i => dot(v, wt[i])) }
-      throw new Error(`cannot multiply v,w`) }
+      throw new Error(`cannot mul v,w`) }
 
-  Array.prototype.mul = function(w) {
-      if (is_num(w)) return this.map(x => x*w)
-      if (is_vec(w)) return this.map((x,i) => x*w[i])
-      if (is_mat(w)) return 1
-      throw new Error(`cannot multiply by type ${typeof(w)}`) }
+  function div (v,w) {
+      if (is_vec(v) && is_num(w)) return v.map(x => x/w)
+      if (is_vec(v) && is_vec(w)) return zipWith((x,y) => x/y)(v, w)
+      throw new Error(`cannot div v,w`) }
+
+  function add (v,w) {
+      if (is_vec(v) && is_vec(w)) return zipWith((x,y) => x+y)(v,w)
+      if (is_num(v) && is_vec(w)) return w.map(x => v+x)
+      if (is_vec(v) && is_num(w)) return v.map(x => w+x)
+      throw new Error(`cannot add v,w`) }
+
+  function sub (v,w) {
+      if (is_vec(v) && is_vec(w)) return zipWith((x,y) => x-y)(v,w)
+      if (is_vec(v) && is_num(w)) return v.map(x => x-w)
+      throw new Error(`cannot sub v,w`) }
+
+
+  class Vector extends Array {
+      constructor(...xs) { super(...xs) }
+      append(item) { this.push(item) }
+      toString() { throw new Error("Vectors don't support toString!") }
+  }
+
+  Array.prototype.le = function(w) { return sub(this,w).filter(x => x > 0).length == 0 }
+  Array.prototype.ge = function(w) { return sub(this,w).filter(x => x < 0).length == 0 }
+
+  Array.prototype.mul = function(w) { return mul(this, w) }
+  Array.prototype.div = function(w) { return div(this, w) }
+  Array.prototype.add = function(w) { return add(this, w) }
+  Array.prototype.sub = function(w) { return sub(this, w) }
+  Array.prototype.transpose = function () { return transpose(this) }
+
+  // this will stop us screwing up:
+  Array.prototype.toString = function () { throw new Error('toString disabled for Array!') }
 
   var F = fld => obj => obj[fld]
   var compose = (g,h) => (d) => g(h(d))
 
-  var vvadd = zipWith((x,y) => x+y),
-      vvsub = zipWith((x,y) => x-y),
-      vvmul = zipWith((x,y) => x*y),
-      svmul = (a,xs) => xs.map(x => a*x),
-      vabs = (xs) => xs.map(Math.abs),
+  var vabs = (xs) => xs.map(Math.abs),
       vmin = (xs) => Math.min(...xs),
       vmax = (xs) => Math.max(...xs)
 
@@ -188,6 +216,8 @@
                        { pt: [-3,2,0,0], sides: [0.25,0.25,1,1] } ]
 
   var hyperboloids = [ [0.01,0.01,0.01,0.01], [1.01,1.01,1.01,1.01] ]
+  var coord_boxes = [ { pt: [0,0,0,0], sides: [0.5,0.5,0.5,0.5] } ]
+
 
   var bbox   = svg.append('g').attr('class', 'bounding-box')
   var gboxes = svg.append('g').attr('class', 'good-boxes')
@@ -232,6 +262,9 @@
           .append('rect')
           .attrs(box_attrs)
 
+      coord_boxes.map(coord_proj)
+
+
   }
 
   function draw_hyp (v) {
@@ -250,9 +283,23 @@
           .concat(quadrant(a-steps*dx, +dx, -1)) }
 
   function coord_proj (cb) {
-
-  }
-
+      let offset = mul([0,0,x2,x3], M2C),
+          v0 = M2C[0], v1 = M2C[1]
+      let w0 = sub(cb.pt,offset), w1 = cb.sides, w2 = add(w0,w1)
+      let points = []
+      for (let i = 0; i < 3; i++)
+          for (let j = i+1; j < 4; j++) {
+              // echelonize in columns i,j
+              v0 = div(v0, v0[i])
+              v1 = sub(v1, mul(v1[i], v0))
+              v1 = div(v1, v1[j])
+              v0 = sub(v0, mul(v0[j], v1))
+              var take = pt => pt.ge(w0) && pt.le(w2)
+              { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.concat(pt) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.concat(pt) }
+              { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.concat(pt) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.concat(pt) } }
+      points = d3.polygonHull(points) }
 
   update()
 
