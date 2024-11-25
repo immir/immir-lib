@@ -37,7 +37,7 @@
   .grid path { stroke-width: 0; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
-  .hyperboloids { fill: #ff8; stroke: #000; opacity: 0.5; }
+  .hyperboloids { stroke: #000; opacity: 0.5; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
 </style>
@@ -58,12 +58,29 @@
 <div id='x23box' class='center'></div>
 
 <script>
+  var F = fld => obj => obj[fld]
+  var compose = (g,h) => (d) => g(h(d))
+
+  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
+      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i])),
+      vadd = zipWith((x,y) => x+y),
+      vsub = zipWith((x,y) => x-y),
+      vmul = zipWith((x,y) => x*y),
+      vabs = (xs) => xs.map(Math.abs),
+      vmin = (xs) => Math.min(...xs),
+      vmax = (xs) => Math.max(...xs)
+
   var pi = Math.PI, cos = Math.cos
 
-  var M = [[1,1,1,1]].concat(
+  var C2M = [[1,1,1,1]].concat(
       d3.range(1,4).map(
           i => d3.range(1,9,2).map(
               j => 2*cos(2*pi*i*j/16))))
+
+  var M2C = [[0.25,  0.230969883128,   0.176776695297,  0.0956708580912],
+             [0.25,  0.0956708580912, -0.176776695297, -0.230969883128],
+             [0.25, -0.0956708580912, -0.176776695297,  0.230969883128],
+             [0.25, -0.230969883128,   0.176776695297, -0.0956708580912]]
 
   var x2 = 0, x3 = 0
 
@@ -76,18 +93,6 @@
       x3 = this.value
       d3.select('#x3value').text(x3)
       update() })
-
-  var F = fld => obj => obj[fld]
-  var compose = (g,h) => (d) => g(h(d))
-
-  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
-      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i])),
-      vadd = zipWith((x,y) => x+y),
-      vsub = zipWith((x,y) => x-y),
-      vmul = zipWith((x,y) => x*y),
-      vabs = (xs) => xs.map(Math.abs),
-      vmin = (xs) => Math.min(...xs),
-      vmax = (xs) => Math.max(...xs)
 
   var margin = {top: 0, right: 0, bottom: 0, left: 0},
       width = 600 - margin.left - margin.right,
@@ -156,6 +161,8 @@
   var culled_boxes = [ { pt: [1,1,0,0], sides: [0.333,0.333,2,2] },
                        { pt: [-3,2,0,0], sides: [0.25,0.25,1,1] } ]
 
+  var hyperboloids = [ [0.01,0.01,0.01,0.01], [1.01,1.01,1.01,1.01] ]
+
   var bbox   = svg.append('g').attr('class', 'bounding-box')
   var gboxes = svg.append('g').attr('class', 'good-boxes')
   var cboxes = svg.append('g').attr('class', 'culled-boxes')
@@ -175,14 +182,7 @@
 
       var hyp = []
 
-      var c = d3.range(0, 5, 0.1).map((d,i) => { [d, Math.sin(d)] })
-      hypers.selectAll('path')
-          .datum(c)
-          .enter()
-          .append('path')
-
-      gboxes.selectAll('rect')
-          .remove()
+      gboxes.selectAll('rect').remove()
       gboxes.selectAll('rect')
           .data(good_boxes)
           .enter()
@@ -190,15 +190,44 @@
           .append('rect')
           .attrs(box_attrs)
 
-      cboxes.selectAll('rect')
-          .remove()
+      cboxes.selectAll('rect').remove()
       cboxes.selectAll('rect')
           .data(culled_boxes)
           .enter()
           .filter(is_visible)
           .append('rect')
           .attrs(box_attrs)
+
+      hypers.selectAll('path').remove()
+      hypers.selectAll('path')
+          .data(hyperboloids.map(function (d) { return draw_hyp(d); }))
+          .enter()
+          .append('path')
+          .attr('d', line)
+          .style('fill', '#ff8') // why doesn't css work?
+          .style('opacity', '0.2')
   }
+
+  function draw_hyp (v) {
+
+      let a = v[0], b = v[1], bd = 1.0
+      let z = (v[2] - x2) * (v[3] - x3) / bd
+      let dx = 1/50.0, steps = 1000
+
+      var quadrant = (x0, dx, sy) => {
+          return d3.range(0, steps-1).map((i) => {
+              let x = x0 + i*dx; return [x, b + sy*1/z/(x-a) ]; }) }
+
+      return quadrant(a+dx, dx, +1)
+          .concat(quadrant(a+steps*dx, -dx, -1))
+          .concat(quadrant(a-dx      , -dx, +1))
+          .concat(quadrant(a-steps*dx, +dx, -1)) }
+
+  function coord_proj (cb) {
+      
+
+  }
+
 
   update()
 
