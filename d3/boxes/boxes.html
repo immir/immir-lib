@@ -223,13 +223,13 @@
                        { pt: [-3,2,0,0], sides: [0.25,0.25,1,1] } ]
 
   var hyperboloids = [ [0.01,0.01,0.01,0.01], [1.01,1.01,1.01,1.01] ]
-  var coord_boxes = [ { pt: [0,0,0,0], sides: [0.5,0.5,0.5,0.5] } ]
-
+  var coord_boxes = [ { pt: [-0.5,-0.5,-0.5,-0.5], sides: [1,1,1,1] } ]
 
   var bbox   = svg.append('g').attr('class', 'bounding-box')
   var gboxes = svg.append('g').attr('class', 'good-boxes')
   var cboxes = svg.append('g').attr('class', 'culled-boxes')
   var hypers = svg.append('g').attr('class', 'hyperboloids')
+  var coords = svg.append('g').attr('class', 'coord-boxes')
 
   // xs.concat(ys)
 
@@ -245,7 +245,7 @@
 
       hypers.selectAll('path').remove()
       hypers.selectAll('path')
-          .data(hyperboloids.map(function (d) { return draw_hyp(d); }))
+          .data(hyperboloids.map(draw_hyp))
           .enter()
           .append('path')
           .attr('d', line)
@@ -269,8 +269,16 @@
           .append('rect')
           .attrs(box_attrs)
 
-      coord_boxes.map(coord_proj)
 
+      coords.selectAll('path').remove()
+      coords.selectAll('path')
+          .data(coord_boxes.map(coord_proj))
+          .enter()
+          .append('path')
+          .attr('d', line)
+          .style('fill', '#888') // why doesn't css work?
+          .style('opacity', '0.4') // why doesn't css work?
+          .style('stroke-width', 1) // why doesn't css work?
 
   }
 
@@ -301,12 +309,16 @@
               v1 = sub(v1, mul(v1[i], v0))
               v1 = div(v1, v1[j])
               v0 = sub(v0, mul(v0[j], v1))
-              var take = pt => pt.ge(w0) && pt.le(w2)
-              { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.concat(pt) }
-              { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.concat(pt) }
-              { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.concat(pt) }
-              { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.concat(pt) } }
-      points = d3.polygonHull(points) }
+              // var take = pt => pt.ge(w0) && pt.le(w2)
+              let take = (pt) => { return pt.ge(sub(w0,ε)) && pt.le(add(w2,ε)) }
+              { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
+              { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) } }
+      if (points.length == 0) return []
+      points = d3.polygonHull(points)
+      if (points.length) points.push(points[0])
+      return points }
 
   update()
 
