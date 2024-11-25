@@ -101,8 +101,15 @@
 
   class Vector extends Array {
       constructor(...xs) { super(...xs) }
+      toString() { throw new Error("Vectors don't support toString!") } // this is a feature!
       append(item) { this.push(item) }
-      toString() { throw new Error("Vectors don't support toString!") }
+      le(w) { return sub(this,w).filter(x => x > 0).length == 0 }
+      ge(w) { return sub(this,w).filter(x => x < 0).length == 0 }
+      mul(w) { return mul(this,w) }
+      div(w) { return div(this,w) }
+      add(w) { return add(this,w) }
+      sub(w) { return sub(this,w) }
+      transpose() { return transpose(this) }
   }
 
   Array.prototype.le = function(w) { return sub(this,w).filter(x => x > 0).length == 0 }
