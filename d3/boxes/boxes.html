@@ -57,6 +57,37 @@
 
 <div id='x23box' class='center'></div>
 
+<div class='center' style='margin-top: 2em;'>
+  <textarea id='data' name='data' rows='20' cols='120'>
+# Insert data here; lines like the following (comments follow --):
+#
+#  MS_box <v0> <sides>                 -- comment
+#  CS_box [v0] [sides]                 -- a box in CS to display in MS
+#  good_box <v0> <sides> [point]...    -- MS box with CS points defining hyperboloids
+#  cull_box <v0> <sides>               -- MS box to display as 'culled'
+#  hyperboloid [point]                 -- arbitrary hyperboloid to always display
+#
+# Here we are using the bracket notation: [cs point] and <ms point>
+#
+# Here's a example:
+
+MS_box <-2,-2,-2,-2> <4,4,4,4>
+CS_box [0,0,0,0] [0.5,0.5,0.5,0.5]
+CS_box [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
+
+
+# OK, I admit it; the code doesn't care about punctuation at all; it ignores
+# the angle and square brackets, and commas... so just don't make any mistakes :-)
+
+  </textarea>
+</div>
+
+<script>
+  let data = d3.select('#data').node().value;
+  let lines = data.split("\n").filter(line => !/^#/.test(line))
+  console.log(lines)
+</script>
+
 <script>
   var ε = 1e-12
 
