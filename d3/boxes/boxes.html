@@ -180,8 +180,6 @@
       d3.select('#x3value').text(Number(x3).toFixed(2))
       circle_update()
 
-      var hyp = []
-
       hypers.selectAll('path').remove()
       hypers.selectAll('path')
           .data(hyperboloids.map(function (d) { return draw_hyp(d); }))
