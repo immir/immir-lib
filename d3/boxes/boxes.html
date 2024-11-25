@@ -37,7 +37,7 @@
   .grid path { stroke-width: 0; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
-  .hyperboloids { stroke: #000; opacity: 0.5; }
+  .hyperboloids { stroke: #000; opacity: 0.5; stroke-width: 1; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
 </style>
@@ -82,7 +82,7 @@
              [0.25, -0.0956708580912, -0.176776695297,  0.230969883128],
              [0.25, -0.230969883128,   0.176776695297, -0.0956708580912]]
 
-  var x2 = 0, x3 = 0
+  var x2 = 0.5, x3 = 0.5
 
   d3.select("#x2").on("input", function(d) {
       x2 = this.value
@@ -182,6 +182,16 @@
 
       var hyp = []
 
+      hypers.selectAll('path').remove()
+      hypers.selectAll('path')
+          .data(hyperboloids.map(function (d) { return draw_hyp(d); }))
+          .enter()
+          .append('path')
+          .attr('d', line)
+          .style('fill', '#ff8') // why doesn't css work?
+          .style('opacity', '0.2') // why doesn't css work?
+          .style('stroke-width', 1) // why doesn't css work?
+
       gboxes.selectAll('rect').remove()
       gboxes.selectAll('rect')
           .data(good_boxes)
@@ -198,14 +208,6 @@
           .append('rect')
           .attrs(box_attrs)
 
-      hypers.selectAll('path').remove()
-      hypers.selectAll('path')
-          .data(hyperboloids.map(function (d) { return draw_hyp(d); }))
-          .enter()
-          .append('path')
-          .attr('d', line)
-          .style('fill', '#ff8') // why doesn't css work?
-          .style('opacity', '0.2')
   }
 
   function draw_hyp (v) {
@@ -224,7 +226,6 @@
           .concat(quadrant(a-steps*dx, +dx, -1)) }
 
   function coord_proj (cb) {
-      
 
   }
 
