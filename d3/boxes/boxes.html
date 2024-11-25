@@ -100,6 +100,7 @@
 
 
   class Vector extends Array {
+      // e.g. v = new Vector(1,2,3), xs = [1,2,3], w = new Vector(...xs)
       constructor(...xs) { super(...xs) }
       toString() { throw new Error("Vectors don't support toString!") } // this is a feature!
       append(item) { this.push(item) }
@@ -317,7 +318,7 @@
               { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) } }
       if (points.length == 0) return []
       points = d3.polygonHull(points)
-      if (points.length) points.push(points[0])
+      if (points.length > 2) points.push(points[0])
       return points }
 
   update()
