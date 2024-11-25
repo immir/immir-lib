@@ -58,14 +58,30 @@
 <div id='x23box' class='center'></div>
 
 <script>
+  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
+      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i]))
+
+  // HACK: these are simplistic functions for a specific use-case here
+  var is_num = x => typeof(x) == 'number'
+  var is_vec = x => typeof(x) == 'object' && typeof(x[1]) == 'number'
+  var is_mat = x => typeof(x) == 'object' && typeof(x[1]) == 'object'
+  var transpose = x => x[0].map((_, i) => x.map(row => row[i]));
+
+  var dot = (v,w) => (v*w).reduce((x,y) => x+y)
+
+  Array.prototype.mul = function(w) {
+      if (is_num(w)) return this.map(x => x*w)
+      if (is_vec(w)) return this.map((x,i) => x*w[i])
+      if (is_mat(w)) return 1
+      throw new Error(`cannot multiply by type ${typeof(w)}`) }
+
   var F = fld => obj => obj[fld]
   var compose = (g,h) => (d) => g(h(d))
 
-  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
-      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i])),
-      vadd = zipWith((x,y) => x+y),
-      vsub = zipWith((x,y) => x-y),
-      vmul = zipWith((x,y) => x*y),
+  var vvadd = zipWith((x,y) => x+y),
+      vvsub = zipWith((x,y) => x-y),
+      vvmul = zipWith((x,y) => x*y),
+      svmul = (a,xs) => xs.map(x => a*x),
       vabs = (xs) => xs.map(Math.abs),
       vmin = (xs) => Math.min(...xs),
       vmax = (xs) => Math.max(...xs)
