@@ -65,9 +65,11 @@
   var is_num = x => typeof(x) == 'number'
   var is_vec = x => typeof(x) == 'object' && typeof(x[1]) == 'number'
   var is_mat = x => typeof(x) == 'object' && typeof(x[1]) == 'object'
-  var transpose = x => x[0].map((_, i) => x.map(row => row[i]));
 
   var dot = (v,w) => (v*w).reduce((x,y) => x+y)
+
+  Array.prototype.transpose = function () {
+      return this[0].map((_, i) => this.map(row => row[i])) }
 
   Array.prototype.mul = function(w) {
       if (is_num(w)) return this.map(x => x*w)
