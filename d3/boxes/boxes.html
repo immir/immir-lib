@@ -71,20 +71,44 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
 
 <script>
 
-  var bounding_boxes = [],
-      good_boxes = [],
-      culled_boxes = [],
-      hyperboloids = []
+  var data = { bound: [], coord: [], good: [], cull: [], hyper: [] }
 
   function parse_data () {
       let data = d3.select('#data').node().value;
       let lines = data.split("\n")
       lines.forEach((line) => {
           line = line.replace(/#.*/, '')
-          if (/^\w*$/.test(line)) return
-          console.log(line)
+          if (/^ *$/.test(line)) return
+          line = line.replaceAll(/[[\]<>,]/g, ' ')
+          line = line.replaceAll(/^ +| +$/g, '')
+          let f = line.split(/ +/)
+          let type = f.splice(0,1).toString() // crazy!
+          // now every line is a sequence of 4-tuples:
+          let vecs = []
+          while (f.length > 0)
+              vecs.push(f.splice(0,4))
+          switch(type) {
+          case "bound":
+              bounding_boxes.push(vecs)
+              break
+          case 'coord':
+              coord_boxes.push(vecs)
+              break
+          case 'good':
+              good_boxes.push(vecs)
+              break
+          case 'cull':
+              culled_boxes.push(vecs)
+              break
+          case 'hyper':
+              hyperboloids.push(vecs)
+              break
+          default:
+              console.log('unknown params: ' + line)
+          }
       })
   }
+
 
   parse_data() // this is where our default data should come from
 
@@ -275,9 +299,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
           .enter()
           .append('path')
           .attr('d', line)
-          .style('fill', '#ff8') // why doesn't css work?
-          .style('opacity', '0.2') // why doesn't css work?
-          .style('stroke-width', 1) // why doesn't css work?
+          .styles({fill: '#ff8', opacity: '0.2', 'stroke-width': '1'})
 
       gboxes.selectAll('rect').remove()
       gboxes.selectAll('rect')
@@ -294,7 +316,6 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
           .filter(is_visible)
           .append('rect')
           .attrs(box_attrs)
-
 
       coords.selectAll('path').remove()
       coords.selectAll('path')
