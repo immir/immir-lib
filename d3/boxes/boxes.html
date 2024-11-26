@@ -17,15 +17,12 @@
   .bounding-box { fill: none; stroke: #000; opacity: 0.2; stroke-width: 5; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
-  .hyperboloids path { stroke: #000; fill: #ff8; opacity: 0.2; stroke-width: 1; }
+  .hyperboloids { stroke: #000; fill: #ff8; opacity: 0.2; stroke-width: 1; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
 
-  #test rect { fill: #ccc; stroke: #000; stroke-width: 2; opacity: 0.2; }
-  #test circle { opacity: 0.2; }
-  #test.show rect { opacity: 1.0; }
-  #test.show circle { opacity: 1.0; }
-
+  #test { fill: #ccc; stroke: #000; stroke-width: 2; opacity: 0.2; }
+  #test.show { opacity: 1.0; }
 </style>
 
 <div id='svg-parent' class='center'></div>
@@ -356,11 +353,12 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
         y: y(1.5 + 1),
         width: dx(0, 2),
         height: dy(0, 1) })
+    .on('click', function() { g.classed('show', !g.classed('show')) })
     g.append('circle').attrs({
         cx: x(1.75), cy : y(1.0), r: 5 })
   }
 
-  d3.select('#test').classed('show', true)
+  //d3.select('#test').classed('show', true)
 
   update() // initial display!
 
