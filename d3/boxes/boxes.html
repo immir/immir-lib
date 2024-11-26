@@ -38,7 +38,7 @@
 <div id='x23box' class='center'></div>
 
 <div class='vbox center' style='margin-top: 2em;'>
-  <textarea id='data' name='data' rows='20' cols='120' style='margin: 1em;'>
+  <textarea id='data' name='data' rows='20' cols='96' style='margin: 1em;'>
 # Insert data here; lines like the following:
 #
 #  bound <pt> <sides>              -- bounding box in MS to show
@@ -51,16 +51,16 @@
 #
 # Here's a example:
 
-bound <-2,-2,-2,-2> <4,4,4,4>
-coord [0,0,0,0] [0.5,0.5,0.5,0.5]
-coord [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
-good <-1,-1,-1,-1> <0.5,0.5,0.5,1.0> [0,1,0,1] [0,0,0,0]
-good <-0.5,-1,-1,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
-good <-0.5,-0.5,-1,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
-good <-0.5,-0.5,-0.5,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
-good <-0.5,-0.5,-0.5,-0.5> <0.5,0.5,0.5,0.5> [1,0,0,0]
-cull <0,0,0,1> <0.5,0.5,0.5,1.0>
-hyper [1,1,1,1]
+bound  < -2,-2,-2,-2> <4,4,4,4>
+coord  [ 0,0,0,0 ] [0.5,0.5,0.5,0.5]
+coord  [ 0,0,0,-0.5 ] [0.5,0.5,0.5,0.5]
+good   < -1,-1,-1,-1 > <0.5,0.5,0.5,1.0> [0,1,0,1] [0,0,0,0]
+good   < -0.5,-1,-1,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
+good   < -0.5,-0.5,-1,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
+good   < -0.5,-0.5,-0.5,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
+good   < -0.5,-0.5,-0.5,-0.5 > <0.5,0.5,0.5,0.5> [1,0,0,0]
+cull   < 0,0,0,1 > <0.5,0.5,0.5,1.0>
+hyper  [ 1,1,1,1 ]  # can add comments here too
 
 # OK, I admit it; the code doesn't care about punctuation at all; it ignores
 # the angle and square brackets, and commas... so just don't make any mistakes :-)
@@ -70,9 +70,22 @@ hyper [1,1,1,1]
 </div>
 
 <script>
-  let data = d3.select('#data').node().value;
-  let lines = data.split("\n").filter(line => !/^#/.test(line))
-  console.log(lines)
+  var bounding_boxes = [],
+      good_boxes = [],
+      culled_boxes = [],
+      hyperboloids = []
+
+  function parse_data () {
+      let data = d3.select('#data').node().value;
+      let lines = data.split("\n")
+      lines.forEach((line) => {
+          line = line.replace(/#.*/, '')
+          if (/^\w*$/.test(line)) return
+          console.log(line)
+      })
+  }
+
+  parse_data() // this is where our default data should come from
 </script>
 
 <script>
