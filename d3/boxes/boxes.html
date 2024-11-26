@@ -4,27 +4,7 @@
 
 <script src='http://d3js.org/d3.v4.min.js'></script>
 <script src="https://d3js.org/d3-selection-multi.v0.4.min.js"></script>
-
 <script> d3.select('body').append('h1').text(d3.select('title').text()) </script>
-
-<script>
-  /*
-    Input format:
-
-    coord [1,2,3,4] [1,2,3,4]   -- coordinate space box, piece of fund. domain
-    bound [1,2,3,4] [1,2,3,4]   -- bounding box in MS space
-    cull [1,2,3,4] [1,2,3,4]    -- culled box
-    good [1,2,3,4] [1,2,3,4] [1,2,3,4] ....  -- good box, with multiple CS points
-
-    Also, input for the transformation CS -> MS:
-
-    [ [1,2,3,4],
-      [1,2,3,4],
-      [1,2,3,4],
-      [1,2,3,4] ]
-
-   */
-</script>
 
 <style>
   body { background: #ddd; font-size: 100%; padding: 1em; }
@@ -57,29 +37,36 @@
 
 <div id='x23box' class='center'></div>
 
-<div class='center' style='margin-top: 2em;'>
-  <textarea id='data' name='data' rows='20' cols='120'>
-# Insert data here; lines like the following (comments follow --):
+<div class='vbox center' style='margin-top: 2em;'>
+  <textarea id='data' name='data' rows='20' cols='120' style='margin: 1em;'>
+# Insert data here; lines like the following:
 #
-#  MS_box <v0> <sides>                 -- comment
-#  CS_box [v0] [sides]                 -- a box in CS to display in MS
-#  good_box <v0> <sides> [point]...    -- MS box with CS points defining hyperboloids
-#  cull_box <v0> <sides>               -- MS box to display as 'culled'
-#  hyperboloid [point]                 -- arbitrary hyperboloid to always display
+#  bound <pt> <sides>              -- bounding box in MS to show
+#  coord [pt] [sides]              -- a box in CS to display in MS
+#  good <pt> <sides> [point]...    -- MS box with multiple CS points defining hyperboloids
+#  cull <pt> <sides>               -- MS box to display as 'culled'
+#  hyper [point]                   -- arbitrary hyperboloid to display
 #
-# Here we are using the bracket notation: [cs point] and <ms point>
+# Here we are using 'Tad-bracket' notation: [CS-point] and <MS-point>
 #
 # Here's a example:
 
-MS_box <-2,-2,-2,-2> <4,4,4,4>
-CS_box [0,0,0,0] [0.5,0.5,0.5,0.5]
-CS_box [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
-
+bound <-2,-2,-2,-2> <4,4,4,4>
+coord [0,0,0,0] [0.5,0.5,0.5,0.5]
+coord [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
+good <-1,-1,-1,-1> <0.5,0.5,0.5,1.0> [0,1,0,1] [0,0,0,0]
+good <-0.5,-1,-1,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
+good <-0.5,-0.5,-1,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
+good <-0.5,-0.5,-0.5,-1> <0.5,0.5,0.5,0.5> [1,0,0,0]
+good <-0.5,-0.5,-0.5,-0.5> <0.5,0.5,0.5,0.5> [1,0,0,0]
+cull <0,0,0,1> <0.5,0.5,0.5,1.0>
+hyper [1,1,1,1]
 
 # OK, I admit it; the code doesn't care about punctuation at all; it ignores
 # the angle and square brackets, and commas... so just don't make any mistakes :-)
-
   </textarea>
+  <button onclick="parse_data()">Parse data</button>
+
 </div>
 
 <script>
@@ -91,7 +78,9 @@ CS_box [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
 <script>
   var ε = 1e-12
 
-  var zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
+  var F = fld => obj => obj[fld],
+      compose = (g,h) => (d) => g(h(d)),
+      zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
       zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i]))
 
   // HACK: these are simplistic functions for a specific use-case here
@@ -152,9 +141,6 @@ CS_box [0,0,0,-0.5] [0.5,0.5,0.5,0.5]
   Array.prototype.sub = function(w) { return sub(this, w) }
   Array.prototype.transpose = function () { return transpose(this) }
   Array.prototype.toString = function () { throw new Error('toString disabled for Array!') }
-
-  var F = fld => obj => obj[fld]
-  var compose = (g,h) => (d) => g(h(d))
 
   var vabs = (xs) => xs.map(Math.abs),
       vmin = (xs) => Math.min(...xs),
