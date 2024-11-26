@@ -63,6 +63,7 @@ cull   < 0,0,0,1 > <0.5,0.5,0.5,1.0>
 hyper  [ 1,1,1,1 ]  # can add comments here too
 hyper  [ 0,0,0,1 ]  # can add comments here too
 
+
 # OK, I admit it; the code doesn't care about punctuation at all; it ignores
 # the angle and square brackets, and commas... so just don't make any mistakes :-)
   </textarea>
@@ -86,7 +87,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           let type = f.splice(0,1).toString() // toString? really?
           let vecs = [] // now we just have a sequence of 4-tuples:
           while (f.length > 0)
-              vecs.push(f.splice(0,4))
+              vecs.push(f.splice(0,4).map(Number))
           data[type].push({ pt: vecs[0], sides: vecs[1], pts: vecs.slice(2)})
       })
   }
@@ -277,7 +278,8 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
 
       hypers.selectAll('path').remove()
       hypers.selectAll('path')
-          .data(hyperboloids.map(draw_hyp))
+          //.data(hyperboloids.map(draw_hyp))
+          .data(data['hyper'].map(x => x.pt).map(draw_hyp))
           .enter()
           .append('path')
           .attr('d', line)
@@ -312,6 +314,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
   }
 
   function draw_hyp (v) {
+      console.log(v)
 
       let a = v[0], b = v[1], bd = 1.0
       let z = (v[2] - x2) * (v[3] - x3) / bd
@@ -321,10 +324,12 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           return d3.range(0, steps-1).map((i) => {
               let x = x0 + i*dx; return [x, b + sy*1/z/(x-a) ]; }) }
 
-      return quadrant(a+dx, dx, +1)
+      let ret = quadrant(a+dx, dx, +1)
           .concat(quadrant(a+steps*dx, -dx, -1))
           .concat(quadrant(a-dx      , -dx, +1))
-          .concat(quadrant(a-steps*dx, +dx, -1)) }
+          .concat(quadrant(a-steps*dx, +dx, -1))
+      console.log(ret)
+      return ret }
 
   function coord_proj (cb) {
       let offset = mul([0,0,x2,x3], M2C),
