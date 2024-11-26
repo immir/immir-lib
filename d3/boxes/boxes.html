@@ -15,11 +15,18 @@
   .center { display: flex; align-items: center; justify-content: center; }
   .grid line { stroke: #aaa; shape-rendering: crispEdges; }
   .grid path { stroke-width: 0; }
+  .bounding-box { fill: none; stroke: #000; opacity: 0.2; stroke-width: 5; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
-  .hyperboloids { stroke: #000; opacity: 0.9; stroke-width: 1; }
+  .hyperboloids path { fill: #ff8; opacity: 0.2; stroke-width: 1; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
+
+  #test rect { fill: #ccc; stroke: #000; stroke-width: 2; opacity: 0.2; }
+  #test circle { opacity: 0.2; }
+  #test.show rect { opacity: 1.0; }
+  #test.show circle { opacity: 1.0; }
+
 </style>
 
 <div id='svg-parent' class='center'></div>
@@ -59,7 +66,7 @@ good   < -0.5,-1,-1,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
 good   < -0.5,-0.5,-1,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
 good   < -0.5,-0.5,-0.5,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
 good   < -0.5,-0.5,-0.5,-0.5 > <0.5,0.5,0.5,0.5> [1,0,0,0]
-cull   < 0,0,0,1 > <0.5,0.5,0.5,1.0>
+cull   < 0,0,0,1 > <1.5,1.5,2.5,2.0>
 hyper  [ 1,1,1,1 ]  # can add comments here too
 hyper  [ 0,0,0,1 ]  # can add comments here too
 
@@ -91,7 +98,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           data[type].push({ pt: vecs[0], sides: vecs[1], pts: vecs.slice(2)})
       })
   }
-
 
   parse_data() // this is where our default data should come from
 
@@ -248,21 +254,11 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       width: d => dx(0, d.sides[0]),
       height: d => dy(0, d.sides[1]) }
 
-  var good_boxes = [ { pt: [-1,-1,0,0], sides: [0.5,0.25,2,2] },
-                     { pt: [-2,-1.5,0,0], sides: [0.25,0.25,1,1] },
-                     { pt: [-3,-1.8,0,0], sides: [0.25,0.25,0.5,0.5] } ]
-
-  var culled_boxes = [ { pt: [1,1,0,0], sides: [0.333,0.333,2,2] },
-                       { pt: [-3,2,0,0], sides: [0.25,0.25,1,1] } ]
-
-  var hyperboloids = [ [0.01,0.01,0.01,0.01], [1.01,1.01,1.01,1.01] ]
-  var coord_boxes = [ { pt: [-0.5,-0.5,-0.5,-0.5], sides: [1,1,1,1] } ]
-
-  var bbox   = svg.append('g').attr('class', 'bounding-box')
-  var gboxes = svg.append('g').attr('class', 'good-boxes')
-  var cboxes = svg.append('g').attr('class', 'culled-boxes')
-  var hypers = svg.append('g').attr('class', 'hyperboloids')
-  var coords = svg.append('g').attr('class', 'coord-boxes')
+  var g_bound = svg.append('g').attr('class', 'bounding-box')
+  var g_good  = svg.append('g').attr('class', 'good-boxes')
+  var g_cull  = svg.append('g').attr('class', 'culled-boxes')
+  var g_hyper = svg.append('g').attr('class', 'hyperboloids')
+  var g_coord = svg.append('g').attr('class', 'coord-boxes')
 
   // xs.concat(ys)
 
@@ -276,34 +272,39 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       d3.select('#x3value').text(Number(x3).toFixed(2))
       circle_update()
 
-      hypers.selectAll('path').remove()
-      hypers.selectAll('path')
-          //.data(hyperboloids.map(draw_hyp))
+      g_bound.selectAll('path').remove()
+      g_bound.selectAll('path')
+          .data(data['bound'])
+          .enter()
+          .append('rect')
+          .attrs(box_attrs)
+
+      g_hyper.selectAll('path').remove()
+      g_hyper.selectAll('path')
           .data(data['hyper'].map(x => x.pt).map(draw_hyp))
           .enter()
           .append('path')
           .attr('d', line)
-          .styles({fill: '#ff8', opacity: '0.2', 'stroke-width': '1'})
 
-      gboxes.selectAll('rect').remove()
-      gboxes.selectAll('rect')
-          .data(good_boxes)
+      g_good.selectAll('rect').remove()
+      g_good.selectAll('rect')
+          .data(data['good'])
           .enter()
           .filter(is_visible)
           .append('rect')
           .attrs(box_attrs)
 
-      cboxes.selectAll('rect').remove()
-      cboxes.selectAll('rect')
-          .data(culled_boxes)
+      g_cull.selectAll('rect').remove()
+      g_cull.selectAll('rect')
+          .data(data['cull'])
           .enter()
           .filter(is_visible)
           .append('rect')
           .attrs(box_attrs)
 
-      coords.selectAll('path').remove()
-      coords.selectAll('path')
-          .data(coord_boxes.map(coord_proj))
+      g_coord.selectAll('path').remove()
+      g_coord.selectAll('path')
+          .data(data['coord'].map(coord_proj))
           .enter()
           .append('path')
           .attr('d', line)
@@ -314,8 +315,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
   }
 
   function draw_hyp (v) {
-      console.log(v)
-
       let a = v[0], b = v[1], bd = 1.0
       let z = (v[2] - x2) * (v[3] - x3) / bd
       let dx = 1/50.0, steps = 1000
@@ -324,12 +323,10 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           return d3.range(0, steps-1).map((i) => {
               let x = x0 + i*dx; return [x, b + sy*1/z/(x-a) ]; }) }
 
-      let ret = quadrant(a+dx, dx, +1)
+      return quadrant(a+dx, dx, +1)
           .concat(quadrant(a+steps*dx, -dx, -1))
           .concat(quadrant(a-dx      , -dx, +1))
-          .concat(quadrant(a-steps*dx, +dx, -1))
-      console.log(ret)
-      return ret }
+          .concat(quadrant(a-steps*dx, +dx, -1)) }
 
   function coord_proj (cb) {
       let offset = mul([0,0,x2,x3], M2C),
@@ -352,20 +349,20 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       if (points.length > 2) points.push(points[0])
       return points }
 
-  update() // initial display!
 
-  { let g = svg.append('g')
+
+  { let g = svg.append('g').attr('id', 'test')
     g.append('rect').attrs({
         x: x(1.5),
         y: y(1.5 + 1),
         width: dx(0, 2),
         height: dy(0, 1) })
-    .style('fill', '#ccc')
     g.append('circle').attrs({
         cx: x(1.75), cy : y(1.0), r: 5 })
-
   }
 
+  d3.select('#test').classed('show', true)
 
+  update() // initial display!
 
 </script>
