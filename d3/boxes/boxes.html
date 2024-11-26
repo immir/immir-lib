@@ -70,6 +70,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
 </div>
 
 <script>
+
   var bounding_boxes = [],
       good_boxes = [],
       culled_boxes = [],
@@ -86,9 +87,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   }
 
   parse_data() // this is where our default data should come from
-</script>
 
-<script>
   var ε = 1e-12
 
   var F = fld => obj => obj[fld],
@@ -232,8 +231,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
           .attr('cy', y(0))
           .call(dragHandler)
 
-      function circle_update () {
-          circle.attr('cx', x(x2)).attr('cy',y(x3)) }
+      var circle_update = () => circle.attr('cx', x(x2)).attr('cy',y(x3))
   }
 
   var box_attrs = { // can be reused for all our box types
@@ -331,8 +329,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
       let w0 = sub(cb.pt,offset), w1 = cb.sides, w2 = add(w0,w1)
       let points = []
       for (let i = 0; i < 3; i++)
-          for (let j = i+1; j < 4; j++) {
-              // echelonize in columns i,j
+          for (let j = i+1; j < 4; j++) { // echelonize in columns i,j
               v0 = div(v0, v0[i])
               v1 = sub(v1, mul(v1[i], v0))
               v1 = div(v1, v1[j])
@@ -343,10 +340,10 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
               { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) }
               { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) } }
       if (points.length == 0) return []
-      points = d3.polygonHull(points)
+      points = d3.polygonHull(points) // this is *fantastic*
       if (points.length > 2) points.push(points[0])
       return points }
 
-  update()
+  update() // initial display!
 
 </script>
