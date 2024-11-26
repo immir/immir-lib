@@ -74,8 +74,8 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   var data = { bound: [], coord: [], good: [], cull: [], hyper: [] }
 
   function parse_data () {
-      let data = d3.select('#data').node().value;
-      let lines = data.split("\n")
+      let datatext = d3.select('#data').node().value;
+      let lines = datatext.split("\n")
       lines.forEach((line) => {
           line = line.replace(/#.*/, '')
           if (/^ *$/.test(line)) return
@@ -87,25 +87,9 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
           let vecs = []
           while (f.length > 0)
               vecs.push(f.splice(0,4))
-          switch(type) {
-          case "bound":
-              bounding_boxes.push(vecs)
-              break
-          case 'coord':
-              coord_boxes.push(vecs)
-              break
-          case 'good':
-              good_boxes.push(vecs)
-              break
-          case 'cull':
-              culled_boxes.push(vecs)
-              break
-          case 'hyper':
-              hyperboloids.push(vecs)
-              break
-          default:
-              console.log('unknown params: ' + line)
-          }
+          console.log(`type = "${type}"`)
+          console.log(data[type])
+          data[type].push(vecs)
       })
   }
 
@@ -261,7 +245,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   var box_attrs = { // can be reused for all our box types
       class: 'box',
       x: d => x(d.pt[0]),
-      y: d => y(d.pt[1]),
+      y: d => y(d.pt[1] + d.sides[1]),
       width: d => dx(0, d.sides[0]),
       height: d => dy(0, d.sides[1]) }
 
@@ -366,5 +350,19 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
       return points }
 
   update() // initial display!
+
+  { let g = svg.append('g')
+    g.append('rect').attrs({
+        x: x(1.5),
+        y: y(1.5 + 1),
+        width: dx(0, 2),
+        height: dy(0, 1) })
+    .style('fill', '#ccc')
+    g.append('circle').attrs({
+        cx: x(1.75), cy : y(1.0), r: 5 })
+
+  }
+
+
 
 </script>
