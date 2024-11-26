@@ -61,6 +61,7 @@ good   < -0.5,-0.5,-0.5,-1 > <0.5,0.5,0.5,0.5> [1,0,0,0]
 good   < -0.5,-0.5,-0.5,-0.5 > <0.5,0.5,0.5,0.5> [1,0,0,0]
 cull   < 0,0,0,1 > <0.5,0.5,0.5,1.0>
 hyper  [ 1,1,1,1 ]  # can add comments here too
+hyper  [ 0,0,0,1 ]  # can add comments here too
 
 # OK, I admit it; the code doesn't care about punctuation at all; it ignores
 # the angle and square brackets, and commas... so just don't make any mistakes :-)
@@ -76,20 +77,17 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   function parse_data () {
       let datatext = d3.select('#data').node().value;
       let lines = datatext.split("\n")
-      lines.forEach((line) => {
+      lines.forEach(line => {
           line = line.replace(/#.*/, '')
           if (/^ *$/.test(line)) return
           line = line.replaceAll(/[[\]<>,]/g, ' ')
           line = line.replaceAll(/^ +| +$/g, '')
           let f = line.split(/ +/)
-          let type = f.splice(0,1).toString() // crazy!
-          // now every line is a sequence of 4-tuples:
-          let vecs = []
+          let type = f.splice(0,1).toString() // toString? really?
+          let vecs = [] // now we just have a sequence of 4-tuples:
           while (f.length > 0)
               vecs.push(f.splice(0,4))
-          console.log(`type = "${type}"`)
-          console.log(data[type])
-          data[type].push(vecs)
+          data[type].push({ pt: vecs[0], sides: vecs[1], pts: vecs.slice(2)})
       })
   }
 
@@ -99,9 +97,9 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   var ε = 1e-12
 
   var F = fld => obj => obj[fld],
-      compose = (g,h) => (d) => g(h(d)),
+      compose = (g,h) => d => g(h(d)),
       zip = (xs,ys) => xs.map((x,i) => [x,ys[i]]),
-      zipWith = (f) => (xs, ys) => xs.map((x,i) => f(x, ys[i]))
+      zipWith = f => (xs, ys) => xs.map((x,i) => f(x, ys[i]))
 
   // HACK: these are simplistic functions for a specific use-case here
   var is_num = x => typeof(x) == 'number'
@@ -162,9 +160,9 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   Array.prototype.transpose = function () { return transpose(this) }
   Array.prototype.toString = function () { throw new Error('toString disabled for Array!') }
 
-  var vabs = (xs) => xs.map(Math.abs),
-      vmin = (xs) => Math.min(...xs),
-      vmax = (xs) => Math.max(...xs)
+  var vabs = xs => xs.map(Math.abs),
+      vmin = xs => Math.min(...xs),
+      vmax = xs => Math.max(...xs)
 
   var pi = Math.PI, cos = Math.cos
 
@@ -215,7 +213,7 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
   var dx = (x0,x1) => x(x1) - x(x0), // for rectangle width (user -> svg)
       dy = (y0,y1) => y(y0) - y(y1)  //          and  height (user -> svg)
 
-  {
+  { // x2,x3 box
       let width = 100, height = 100
       var svgx23 = d3.select('#x23box')
           .append('div').attr('class','framed')
@@ -269,9 +267,9 @@ hyper  [ 1,1,1,1 ]  # can add comments here too
 
   function update () {
 
-      var is_visible = (d) =>
-          x2 >= d.pt[2] && x2 <= d.pt[2] + d.sides[2] &&
-          x3 >= d.pt[3] && x3 <= d.pt[3] + d.sides[3];
+      var is_visible = box =>
+          x2 >= box.pt[2] && x2 <= box.pt[2] + box.sides[2] &&
+          x3 >= box.pt[3] && x3 <= box.pt[3] + box.sides[3]
 
       d3.select('#x2value').text(Number(x2).toFixed(2))
       d3.select('#x3value').text(Number(x3).toFixed(2))
