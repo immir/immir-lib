@@ -149,8 +149,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       if (is_vec(v) && is_num(w)) return v.map(x => x-w)
       throw new Error(`cannot sub v,w`) }
 
-
-  class Vector extends Array {
+  class Vector extends Array { // TODO: switch to this instead of Array
       // e.g. v = new Vector(1,2,3), xs = [1,2,3], w = new Vector(...xs)
       constructor(...xs) { super(...xs) }
       toString() { throw new Error("Vectors don't support toString!") } // this is a feature!
@@ -172,10 +171,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
   Array.prototype.sub = function(w) { return sub(this, w) }
   Array.prototype.transpose = function () { return transpose(this) }
   Array.prototype.toString = function () { throw new Error('toString disabled for Array!') }
-
-  var vabs = xs => xs.map(Math.abs),
-      vmin = xs => Math.min(...xs),
-      vmax = xs => Math.max(...xs)
 
   var pi = Math.PI, cos = Math.cos
 
@@ -226,7 +221,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
   var dx = (x0,x1) => x(x1) - x(x0), // for rectangle width (user -> svg)
       dy = (y0,y1) => y(y0) - y(y1)  //          and  height (user -> svg)
 
-  { // x2,x3 box
+  { // x2,x3 coordinate box
       let width = 100, height = 100
       var svgx23 = d3.select('#x23box')
           .append('div').attr('class','framed')
@@ -265,8 +260,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
   var g_cull  = svg.append('g').attr('class', 'culled-boxes')
   var g_hyper = svg.append('g').attr('class', 'hyperboloids')
   var g_coord = svg.append('g').attr('class', 'coord-boxes')
-
-  // xs.concat(ys)
 
   function update () {
 
@@ -321,7 +314,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           .enter()
           .append('path')
           .attr('d', line)
-
   }
 
   function draw_hyp (v) {
