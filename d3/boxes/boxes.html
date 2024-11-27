@@ -286,13 +286,6 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           .append('rect')
           .attrs(box_attrs)
 
-      g_hyper.selectAll('path').remove()
-      g_hyper.selectAll('path')
-          .data(data['hyper'].map(x => x.pt).map(draw_hyp))
-          .enter()
-          .append('path')
-          .attr('d', line)
-
       g_good.selectAll('rect').remove()
       g_good.selectAll('rect')
           .data(data['good'])
@@ -318,6 +311,17 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           .style('fill', '#888') // why doesn't css work?
           .style('opacity', '0.4') // why doesn't css work?
           .style('stroke-width', 1) // why doesn't css work?
+
+      let all_hypers = data['hyper'].map(d => d.pt)
+      data['good'].filter(is_visible).forEach(function (d) {
+          d['pts'].forEach(pt => all_hypers.push(pt))})
+
+      g_hyper.selectAll('path').remove()
+      g_hyper.selectAll('path')
+          .data(all_hypers.map(draw_hyp))
+          .enter()
+          .append('path')
+          .attr('d', line)
 
   }
 
