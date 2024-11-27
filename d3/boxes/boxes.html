@@ -305,7 +305,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       g_cull.selectAll('rect')
           .data(data['cull'])
           .enter()
-          .filter(function(d) {return is_visible(d)})
+          .filter(is_visible)
           .append('rect')
           .attrs(box_attrs)
 
