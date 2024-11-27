@@ -70,15 +70,16 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
 # OK, I admit it; the code doesn't care about punctuation at all; it ignores
 # the angle and square brackets, and commas... so just don't make any mistakes :-)
   </textarea>
-  <button onclick="parse_data()">Parse data</button>
+  <button onclick="parse_data(); update()">Parse data</button>
 
 </div>
 
 <script>
 
-  var data = { bound: [], coord: [], good: [], cull: [], hyper: [] }
+  var data = {}
 
   function parse_data () {
+      data = { bound: [], coord: [], good: [], cull: [], hyper: [] }
       let datatext = d3.select('#data').node().value;
       let lines = datatext.split("\n")
       lines.forEach(line => {
@@ -87,7 +88,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           line = line.replaceAll(/[[\]<>,]/g, ' ')
           line = line.replaceAll(/^ +| +$/g, '')
           let f = line.split(/ +/)
-          let type = f.splice(0,1).toString() // toString? really?
+          let type = f.splice(0,1)[0].toString() // toString? really?
           let vecs = [] // now we just have a sequence of 4-tuples:
           while (f.length > 0)
               vecs.push(f.splice(0,4).map(Number))
@@ -260,9 +261,9 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
 
   function update () {
 
-      var is_visible = box =>
-          x2 >= box.pt[2] && x2 <= box.pt[2] + box.sides[2] &&
-          x3 >= box.pt[3] && x3 <= box.pt[3] + box.sides[3]
+      function is_visible(box) {
+          return (x2 >= box.pt[2] && x2 <= box.pt[2] + box.sides[2] &&
+                  x3 >= box.pt[3] && x3 <= box.pt[3] + box.sides[3]) }
 
       d3.select('#x2value').text(Number(x2).toFixed(2))
       d3.select('#x3value').text(Number(x3).toFixed(2))
@@ -294,7 +295,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       g_cull.selectAll('rect')
           .data(data['cull'])
           .enter()
-          .filter(is_visible)
+          .filter(function(d) {return is_visible(d)})
           .append('rect')
           .attrs(box_attrs)
 
@@ -315,7 +316,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       let z = (v[2] - x2) * (v[3] - x3) / bd
       let dx = 1/50.0, steps = 1000
 
-      var quadrant = (x0, dx, sy) => {
+      let quadrant = (x0, dx, sy) => {
           return d3.range(0, steps-1).map((i) => {
               let x = x0 + i*dx; return [x, b + sy*1/z/(x-a) ]; }) }
 
@@ -347,6 +348,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
 
 
 
+  /*
   { let g = svg.append('g').attr('id', 'test')
     g.append('rect').attrs({
         x: x(1.5),
@@ -357,8 +359,7 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
     g.append('circle').attrs({
         cx: x(1.75), cy : y(1.0), r: 5 })
   }
-
-  //d3.select('#test').classed('show', true)
+  */
 
   update() // initial display!
 
