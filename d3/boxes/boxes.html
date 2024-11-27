@@ -2,6 +2,15 @@
 <title>Q_[2] covering</title>
 <body>
 
+<script>
+  /*
+    # just this proves Q_[2] Norm Euclidean???
+    coord  [ 0,0,0,0 ] [0.5,0.5,0.5,0.5]
+    coord  [ 0,0,0,-0.5 ] [0.5,0.5,0.5,0.5]
+    hyper  [ 1,0,0,0 ]
+  */
+</script>
+
 <script src='http://d3js.org/d3.v4.min.js'></script>
 <script src="https://d3js.org/d3-selection-multi.v0.4.min.js"></script>
 <script> d3.select('body').append('h1').text(d3.select('title').text()) </script>
@@ -17,6 +26,7 @@
   .bounding-box { fill: none; stroke: #000; opacity: 0.2; stroke-width: 5; }
   .good-boxes { fill: #8f8; stroke: #000; stroke-width: 1; }
   .culled-boxes { fill: #f88; stroke: #000; stroke-width: 1; }
+  .coord-boxes { fill: #888; stroke: #000; stroke-width: 1; opacity: 0.5; }
   .hyperboloids { stroke: #000; fill: #ff8; opacity: 0.2; stroke-width: 1; }
   .vbox { display: flex; flex-direction: column; align-items: center; }
   .framed { outline: thin solid black; }
@@ -269,8 +279,8 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
       d3.select('#x3value').text(Number(x3).toFixed(2))
       circle_update()
 
-      g_bound.selectAll('path').remove()
-      g_bound.selectAll('path')
+      g_bound.selectAll('rect').remove()
+      g_bound.selectAll('rect')
           .data(data['bound'])
           .enter()
           .append('rect')
@@ -337,10 +347,10 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
               v1 = div(v1, v1[j])
               v0 = sub(v0, mul(v0[j], v1))
               let take = (pt) => { return pt.ge(sub(w0,ε)) && pt.le(add(w2,ε)) }
-              { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
-              { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.push(pt) }
-              { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) }
-              { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.push(pt) } }
+              { let pt = add(mul(v0, w0[i]), mul(v1, w0[j])); if (take(pt)) points.push(mul(pt,C2M)) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w0[j])); if (take(pt)) points.push(mul(pt,C2M)) }
+              { let pt = add(mul(v0, w0[i]), mul(v1, w2[j])); if (take(pt)) points.push(mul(pt,C2M)) }
+              { let pt = add(mul(v0, w2[i]), mul(v1, w2[j])); if (take(pt)) points.push(mul(pt,C2M)) } }
       if (points.length == 0) return []
       points = d3.polygonHull(points) // this is *fantastic*
       if (points.length > 2) points.push(points[0])
