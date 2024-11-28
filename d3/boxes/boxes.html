@@ -316,7 +316,9 @@ hyper  [ 0,0,0,1 ]  # can add comments here too
           .attr('d', line)
   }
 
-  function draw_hyp (v) {
+  function draw_hyp (pt) {
+      let v = mul(pt, C2M)
+
       let a = v[0], b = v[1], bd = 1.0
       let z = (v[2] - x2) * (v[3] - x3) / bd
       let dx = 1/50.0, steps = 1000
