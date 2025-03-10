@@ -13,9 +13,8 @@ exit
 #include <cassert>
 #include <ranges>
 
-using namespace std;
-using std::ranges::views::zip;
-using std::ranges::views::iota;
+using std::vector, std::cout, std::ostream, std::string, std::print, std::println;
+using std::min, std::max;
 
 #define append push_back
 
@@ -210,14 +209,17 @@ int main (int argc, char *argv[]) {
     dump(s);
 
     vec ss = abs(eval(s, vec{0,1,2,3}));
-    println("abs(s(0,1,2,3)): = {}", ss);
+    println("abs(s(0,1,2,3)): = {}", ss); }
 
-    auto xx = zip(iota(0), s);
-    for (auto [a,b]: xx)
-      println("x = <{},{}>", a, b); }
+    /*
+    {
+      using std::ranges::views::zip;
+      using std::ranges::views::iota;
+      auto xx = zip(iota(0), s);
+      for (auto [a,b]: xx)
+        println("x = <{},{}>", a, b); } */
 
-  {
-    vector<vec> r = { vec{ 1.0, 2.0, 3.0, 4.0 },
+  { vector<vec> r = { vec{ 1.0, 2.0, 3.0, 4.0 },
                       vec{ 1.5, -0.5, -1.0, 3.14 },
                       vec{ 2.0, 1.0, 5.0, 6.0 },
                       vec{ 3.0, 2.4, 1.0, 2.718},
@@ -234,13 +236,14 @@ int main (int argc, char *argv[]) {
 
     println("sorted roots:");
     for (auto v: r)
-      cout << v << endl;
+      cout << v << "\n";
 
     polys f = (x - r[0]) * (x - r[1]) * (x - r[2]) * (x - r[3]) * (x - r[4]);
     polys f1 = derivative(f);
     polys f2 = derivative(f1);
 
-    println("=== finding roots of f1:");
+    println("=== finding roots of f1 = f':");
+    println("f:"); dump(f);
     println("f1:"); dump(f1);
     println("f2:"); dump(f2);
 
@@ -248,18 +251,13 @@ int main (int argc, char *argv[]) {
     int nroots = degree(f1);
     for (int i = 0; i < nroots; i++) {
 
-      //println("----------------");
-      //println("finding root between r[{}] and r[{}]", i, i+1);
-
-      vec z = (r[i] + r[i+1]) / 2; // initial guess
-      //cout << "z = " << z << endl;
-      //cout << "initial guess: f1(z) = " << eval(f1,z) << endl;
+      vec z = {0}; // initial guess for Newton's iterations
 
       for (int iter = 0; iter < 8; iter++)
         z = z - eval(f1,z)/eval(f2,z);
 
-      cout << "final value: f1(z) = " << eval(f1,z) << endl;
-      cout << "z = " << z << endl;
+      cout << "final value: f1(z) = " << eval(f1,z) << "\n";
+      cout << "z = " << z << "\n";
 
       f1 = f1 / (x - z);
       f2 = derivative(f1);
