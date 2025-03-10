@@ -12,6 +12,7 @@ exit
 #include <tuple>
 #include <cassert>
 #include <ranges>
+#include <random>
 
 using std::vector, std::cout, std::ostream, std::string, std::print, std::println;
 using std::min, std::max;
@@ -140,6 +141,7 @@ polys operator/ (const polys &f, const polys &g) {
     vec a = h[df - i] / g[dg];
     h = h - a * shift(g, df-dg-i);
     q.append(a); }
+  // TODO: check h is *close* to zero?
   reverse(q.begin(), q.end());
   return q; }
 
@@ -147,6 +149,13 @@ polys derivative(const polys &f) {
   polys g; int d = degree(f);
   for (int i = 1; i <= d; i++)
     g.append(i * f[i]);
+  return g; }
+
+polys antiderivative(const polys &f) {
+  polys g; int d = degree(f);
+  for (int i = 0; i <= d; i++)
+    g.append(f[i]/(i+1));
+  g = shift(g, 1);
   return g; }
 
 vec eval(polys f, vec x) {
@@ -190,6 +199,10 @@ int main (int argc, char *argv[]) {
   println("g = derivative(f):");
   dump(g);
 
+  polys gg = antiderivative(g);
+  println("gg = antiderivative(g):");
+  dump(gg);
+
   println("f+g:");
   dump(f+g);
 
@@ -219,11 +232,18 @@ int main (int argc, char *argv[]) {
       for (auto [a,b]: xx)
         println("x = <{},{}>", a, b); } */
 
-  { vector<vec> r = { vec{ 1.0, 2.0, 3.0, 4.0 },
-                      vec{ 1.5, -0.5, -1.0, 3.14 },
-                      vec{ 2.0, 1.0, 5.0, 6.0 },
-                      vec{ 3.0, 2.4, 1.0, 2.718},
-                      vec{ 3.2, 2.8, 3.6, 8.1} };
+  { vector<vec> r = { vec{ 1.0, 1.1, -2.0, -10.0 },
+                      vec{ 2.0, 1.2, -1.0, -7.0 },
+                      vec{ 3.0, 1.3,  0.0, -3.0 },
+                      vec{ 4.0, 1.4,  1.0,  4.0 },
+                      vec{ 5.0, 1.5,  2.0,  7.0 } };
+
+    thread_local std::random_device rd;
+    thread_local std::mt19937 rng(rd());
+    std::uniform_real_distribution<> dist(-10.0, 10.0);
+    for (auto &row: r)
+      for (int i = 0; i < N; i++)
+        row[i] = dist(rng);
 
     // sort the roots in each column
     // do I care? or just min/max once for Newton's method each time
@@ -235,14 +255,16 @@ int main (int argc, char *argv[]) {
     op(0,1); op(3,4); op(2,4); op(2,3); op(0,3); op(0,2); op(1,4); op(1,3); op(1,2);
 
     println("sorted roots:");
+
+    println("roots:");
     for (auto v: r)
       cout << v << "\n";
 
     polys f = (x - r[0]) * (x - r[1]) * (x - r[2]) * (x - r[3]) * (x - r[4]);
-    polys f1 = derivative(f);
+    polys f1  = derivative(f);
     polys f2 = derivative(f1);
 
-    println("=== finding roots of f1 = f':");
+    println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
     println("f1:"); dump(f1);
     println("f2:"); dump(f2);
@@ -251,10 +273,16 @@ int main (int argc, char *argv[]) {
     int nroots = degree(f1);
     for (int i = 0; i < nroots; i++) {
 
-      vec z = {0}; // initial guess for Newton's iterations
+      // TODO: start with a guess between adjacent roots... ?
 
-      for (int iter = 0; iter < 8; iter++)
-        z = z - eval(f1,z)/eval(f2,z);
+      vec z = r[0]; // initial guess for Newton's iterations
+
+      // TODO: detect when f2(z) is too close to zero and reset somehow to
+      // a new guess for the root...
+
+      for (int iter = 0; iter < 12; iter++) {
+        cout << "z" << iter << " = " << z << "\n";
+        z = z - eval(f1,z)/eval(f2,z); }
 
       cout << "final value: f1(z) = " << eval(f1,z) << "\n";
       cout << "z = " << z << "\n";
