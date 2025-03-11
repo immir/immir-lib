@@ -187,6 +187,9 @@ vector<vec> critical_points(polys f, vec z0) {
 
   return roots; }
 
+vector<vec> critical_points(polys f) {
+  return critical_points(f, vec{}); }
+
 
 int main (int argc, char *argv[]) {
 
@@ -271,8 +274,8 @@ int main (int argc, char *argv[]) {
 
     println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
-    println(">> using critical_points(f,r[0]):");
-    vector<vec> roots = critical_points(f, r[0]);
+    println(">> using critical_points(f):");
+    vector<vec> roots = critical_points(f);
     for (auto &v: roots)
       cout << v << "\n";
     // working!
