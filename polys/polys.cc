@@ -9,7 +9,6 @@ exit
 #include <format>
 #include <iostream>
 #include <vector>
-#include <tuple>
 #include <cassert>
 #include <ranges>
 #include <random>
@@ -165,10 +164,29 @@ vec eval(polys f, vec x) {
     z += xx * f[i];
   return z; }
 
-vec roots(polys f) {
-  polys g = derivative(f);
-  vec x{}; // guess roots at 0 - TODO: get estimates
-  return x + g[0]; }
+vector<vec> critical_points(polys f, vec z0) {
+  // find critical points of polys in f[] using Newton iterations with
+  // starting value z0[]
+  polys f1 = derivative(f);
+  polys f2 = derivative(f1);
+  const int nroots = degree(f1); // number of roots of f'
+  vector<vec> roots;
+  polys x = { vec{}, vec{}+1 };
+  for (int i = 0; i < nroots; i++) {
+
+    vec z = z0;
+    for (int iter = 0; iter < 12; iter++)
+      z = z - eval(f1,z)/eval(f2,z);
+    // TODO: check convergence
+
+    // z is a collection of roots of f'
+    roots.append(z);
+
+    // remove these roots
+    f1 = f1 / (x - z);
+    f2 = derivative(f1); }
+
+  return roots; }
 
 
 int main (int argc, char *argv[]) {
@@ -291,6 +309,13 @@ int main (int argc, char *argv[]) {
 
       // TODO: divide out by (x-z) and update f1, f2
     }
+
+    println("using critical_points(f,r[0]):");
+    vector<vec> roots = critical_points(f, r[0]);
+    for (auto &v: roots)
+      cout << v << "\n";
+    // working!
+
   }
 
   return 0; }
