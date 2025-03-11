@@ -254,21 +254,7 @@ int main (int argc, char *argv[]) {
       for (int i = 0; i < N; i++)
         row[i] = dist(rng);
 
-    // sort the roots in each column
-    // do I care? or just min/max once for Newton's method each time
-    // (that's probably sufficient)
-    auto op = [&r] (int i, int j) {
-      vec a = min(r[i], r[j]), b = max(r[i],r[j]);
-      r[i] = a, r[j] = b; };
-    // sort.hs: sort 5 -- a non-branching sorting circuit for 5 items
-    assert(n == 5);
-    op(0,1); op(3,4); op(2,4); op(2,3); op(0,3); op(0,2); op(1,4); op(1,3); op(1,2);
-
-    // TODO: I may not need this
-
-    println("sorted roots:");
-
-    polys f{ vec{}+1 }; // 1
+    polys f{ vec{}+1 };
     for (auto z: r)
       f = f * (x - z);
 
@@ -278,7 +264,6 @@ int main (int argc, char *argv[]) {
     vector<vec> roots = critical_points(f);
     for (auto &v: roots)
       cout << v << "\n";
-    // working!
 
   }
 
