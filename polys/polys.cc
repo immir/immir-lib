@@ -166,23 +166,23 @@ vec eval(polys f, vec x) {
 
 vector<vec> critical_points(polys f, vec z0) {
   // find critical points of polys in f[] using Newton iterations with
-  // starting value z0[]
+  // starting values in z0[]
+  vector<vec> roots; // return value
   polys f1 = derivative(f);
   polys f2 = derivative(f1);
-  const int nroots = degree(f1); // number of roots of f'
-  vector<vec> roots;
   polys x = { vec{}, vec{}+1 };
-  for (int i = 0; i < nroots; i++) {
+  while (degree(f1) > 0) {
 
     vec z = z0;
     for (int iter = 0; iter < 12; iter++)
-      z = z - eval(f1,z)/eval(f2,z);
+      z = z - eval(f1,z) / eval(f2,z);
+
     // TODO: check convergence
 
     // z is a collection of roots of f'
     roots.append(z);
 
-    // remove these roots
+    // remove these roots for next iteration
     f1 = f1 / (x - z);
     f2 = derivative(f1); }
 
@@ -258,59 +258,21 @@ int main (int argc, char *argv[]) {
     auto op = [&r] (int i, int j) {
       vec a = min(r[i], r[j]), b = max(r[i],r[j]);
       r[i] = a, r[j] = b; };
-    // sort.hs: sort 5
+    // sort.hs: sort 5 -- a non-branching sorting circuit for 5 items
     assert(n == 5);
     op(0,1); op(3,4); op(2,4); op(2,3); op(0,3); op(0,2); op(1,4); op(1,3); op(1,2);
 
+    // TODO: I may not need this
+
     println("sorted roots:");
 
-    println("roots:");
-    for (auto v: r)
-      cout << v << "\n";
-
-    polys f = {vec{} + 1}; // 1
+    polys f{ vec{}+1 }; // 1
     for (auto z: r)
       f = f * (x - z);
 
-    polys f1 = derivative(f);
-    polys f2 = derivative(f1);
-
     println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
-    println("f1:"); dump(f1);
-    println("f2:"); dump(f2);
-
-    println("degree(f1) = {}", degree(f1));
-
-
-    /*
-
-      (*) We may know we don't have repeated roots. (??)
-      (*) Our roots are within a known interval
-
-     */
-
-    int nroots = degree(f1);
-    for (int i = 0; i < nroots; i++) {
-
-      // we'll just start at the LHS of our region...
-
-      vec z = r[0]; // initial guess for Newton's iterations
-
-      for (int iter = 0; iter < 12; iter++) {
-        cout << "z" << iter << " = " << z << "\n";
-        z = z - eval(f1,z)/eval(f2,z); }
-
-      cout << "final value: f1(z) = " << eval(f1,z) << "\n";
-      cout << "z = " << z << "\n";
-
-      f1 = f1 / (x - z);
-      f2 = derivative(f1);
-
-      // TODO: divide out by (x-z) and update f1, f2
-    }
-
-    println("using critical_points(f,r[0]):");
+    println(">> using critical_points(f,r[0]):");
     vector<vec> roots = critical_points(f, r[0]);
     for (auto &v: roots)
       cout << v << "\n";
