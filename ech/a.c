@@ -15,8 +15,7 @@
 static unsigned long long rdtsc (void) {
   unsigned long long tick;
   __asm__ __volatile__("rdtsc":"=A"(tick));
-  return tick;
-}
+  return tick; }
 
 static uint64_t bits (uint64_t *V, int i, int b) {
   int w0 = i/64, w1 = (i+b-1)/64, ii = i%64;
@@ -24,27 +23,23 @@ static uint64_t bits (uint64_t *V, int i, int b) {
   if (w0 < w1)
     x ^= V[w1] << (64 - ii);
   x &= (1UL<<b)-1;
-  return x;
-}
+  return x; }
 
 static uint64_t bit (uint64_t *V, int i) {
   // guessing that inlined code using this with the same
   // i multiple times will reuse the computed probe...
   uint64_t probe = 1UL << (i%64);
-  return (V[i/64] & probe) != 0;
-}
+  return (V[i/64] & probe) != 0; }
 
 static void addrows (uint64_t * restrict A, uint64_t * restrict B, uint64_t * restrict C, int s, int wds) {
   for (int w = s; w < wds; w++)
-    A[w] = B[w] ^ C[w];
-}
+    A[w] = B[w] ^ C[w]; }
 
 static uint64_t dotprod (uint64_t *A, uint64_t *B, int w0, int w1) {
   uint64_t x = 0;
   for (int w = w0; w < w1; w++)
     x ^= A[w] & B[w];
-  return __builtin_parityl(x);
-}
+  return __builtin_parityl(x); }
 
 // ----------------------------------------------------------------------
 // main worker functions
@@ -69,7 +64,7 @@ static int semi_ech(const int m, const int n, const int wds, uint64_t (*A)[wds],
 
   if (piv) for (int r=0; r<m; r++) piv[r] = -1;
 
-  /* 
+  /*
      This diagram summarises the method. We use "4 Russians" tables
      of width S bits (S=3 below); current block starts at column s;
      to find pivot for row r, we start at j=r and reduce to the
@@ -114,20 +109,16 @@ static int semi_ech(const int m, const int n, const int wds, uint64_t (*A)[wds],
           if (bit(A[j], k))
             addrows (A[j], A[j], A[k], s/64, wds);
         // now check for new pivot
-        if (bit(A[j], r)) break;
-      }
+        if (bit(A[j], r)) break; }
 
-      if  (j == m)
-        // no pivot in this column, skip to next section
+      if  (j == m) // no pivot in this column, skip to next section
         break;
 
-      if (j != r) 
-        // xor onto row r to get pivot there (if it's not already)
+      if (j != r) // xor onto row r to get pivot there (if it's not already)
         addrows (A[r], A[r], A[j], s/64, wds);
 
-      if (piv) piv[r] = r;
-    }
-  
+      if (piv) piv[r] = r; }
+
     // missing pivot; break out to clean up loop
     if (r != s + S) break;
 
@@ -142,7 +133,7 @@ static int semi_ech(const int m, const int n, const int wds, uint64_t (*A)[wds],
     z[0] = 0;
     for (int w = s/64; w < wds; w++)
       Z[0][w] = 0;
-    
+
     // now, for each pivot 0,...,S-1
     for (int i = 0; i < S; i++) {
       int ii = 1<<i;
@@ -151,17 +142,12 @@ static int semi_ech(const int m, const int n, const int wds, uint64_t (*A)[wds],
       for (int j = 0; j < ii; j++) {
         int a = z[j], b = a ^ vv;
         z[j+ii] = b;
-        addrows (Z[b], Z[a], A[s+i], s/64, wds);
-      }
-    }
+        addrows (Z[b], Z[a], A[s+i], s/64, wds); } }
 
     // now reduce below this full-rank block
     for (int i = s + S; i < m; i++) {
       int c = bits(A[i], s, S);
-      addrows (A[i], A[i], Z[c], s/64, wds);
-    }
-
-  }
+      addrows (A[i], A[i], Z[c], s/64, wds); } }
 
   // at this point, we have rows down to r in upper-triangular
   // form and have cleared below them. We are either missing a
@@ -183,13 +169,11 @@ static int semi_ech(const int m, const int n, const int wds, uint64_t (*A)[wds],
       if (bit(A[j], c))
         for (int w = c/64; w < wds; w++)
           A[j][w] ^= A[r][w];
-    r++, c++;
-  }
-  
+    r++, c++; }
+
   free(Z);
   free(z);
-  return r;
-}
+  return r; }
 
 
 static int kernel(const int m,    // height (rows)
@@ -210,20 +194,18 @@ static int kernel(const int m,    // height (rows)
     while (r < m && j == piv[r])
       j++, r++;
     if (j == n) break;
-    
+
     for (int w=0; w<wds; w++) K[i][w] = 0;
     K[i][j/64] ^= 1UL<<(j%64);
-    
+
     // backsolve
     for (int l=r-1; l>=0; l--) {
       int p = piv[l];
       if (dotprod(A[l], K[i], p/64, j/64+1))
-        K[i][p/64] ^= 1UL<<(p%64);
-    }
-  }
+        K[i][p/64] ^= 1UL<<(p%64); } }
 
-  return i; // number of kernel vectors returned
-}
+  return i; } // number of kernel vectors returned
+
 
 int solution(const int m,    // height (rows)
              const int n,    // width in bits
@@ -253,22 +235,18 @@ int solution(const int m,    // height (rows)
     for (int w=0; w<wds; w++) X[i][w] = 0;
 
     X[i][j/64] ^= 1UL<<(j%64); // set rhs bit
-    
+
     // backsolve
     for (int l=r-1; l>=0; l--) {
       int p = piv[l];
       assert(p >= 0);
       assert(p < n);
       if (dotprod(A[l], X[i], 0, wds))
-        X[i][p/64] ^= 1UL<<(p%64);
+        X[i][p/64] ^= 1UL<<(p%64); }
 
-    }
+    X[i][j/64] ^= 1UL<<(j%64); } // clear rhs bit
 
-    X[i][j/64] ^= 1UL<<(j%64); // clear rhs bit
-  }
-
-  return b;
-}
+  return b; }
 
 
 // ----------------------------------------------------------------------
@@ -293,19 +271,16 @@ void dump(const int m, const int n, const int b, const int wds,
     printf(" [%03d] ", r);
     for (int i = 0; i < n; i++)
       printf("%ld", bit(A[r],i));
-    if (b) { 
+    if (b) {
       printf("|");
       for (int i = n; i < n+b; i++)
-        printf("%ld", bit(A[r],i));
-    }
-    printf("\n");
-  }
-}
+        printf("%ld", bit(A[r],i)); }
+    printf("\n"); } }
 
 
 void test_interface () {
 
-  { 
+  {
     gf2_t *pMatrix = calloc(1, sizeof(gf2_t));
     pMatrix->m = 1;
     pMatrix->n = 64;
@@ -319,8 +294,7 @@ void test_interface () {
     gf2_semi_ech(pMatrix);
     gf2_info(pMatrix);
 
-    printf("done with Sean\n");
-  }
+    printf("done with Sean\n"); }
 
 
   { // allocations handled by code
@@ -336,9 +310,7 @@ void test_interface () {
     gf2_kernel(&X);
     gf2_solution(&X);
     gf2_info(&X);
-    gf2_clear(&X);
-
-  }
+    gf2_clear(&X); }
 
 
   { // user managed data
@@ -379,15 +351,12 @@ void test_interface () {
       for (int j = b-1; j >= 0; j--)
         lhs = (lhs<<1) + dotprod(B[r], W[j], 0, wds);
       if (lhs != rhs)
-        printf("i=%d lhs=%lx rhs=%lx\n", i, lhs, rhs);
-    }
+        printf("i=%d lhs=%lx rhs=%lx\n", i, lhs, rhs); }
 
     free(A); free(B);
     free(K); free(W);
-    free(piv);
-  }
+    free(piv); } }
 
-}
 
 // ----------------------------------------------------------------------
 
@@ -395,11 +364,11 @@ void test_interface () {
 static double wall () {
   struct timespec t;
   clock_gettime(CLOCK_REALTIME, &t);
-  return t.tv_sec + t.tv_nsec/1e9;
-}
+  return t.tv_sec + t.tv_nsec/1e9; }
+
 
 int main (int argc, char *argv[]) {
-  
+
   for (++argv; --argc; ++argv)
     if (index(*argv, '='))
       putenv(*argv);
@@ -419,7 +388,7 @@ int main (int argc, char *argv[]) {
   const int wds  = (n + 63) / 64;
   uint64_t (*A)[wds] = malloc(m * sizeof *A); // A[m][wds];
   assert(A);
-  
+
   printf("m=%d n=%d (S=%d trials=%d)\n", m, n, S, trials);
 
   for (int r = 0; r < m; r++)
@@ -428,7 +397,7 @@ int main (int argc, char *argv[]) {
 
   volatile double tm = 0;
   double rr = 0;
-  
+
   uint64_t min_tm1 = ~0UL;
   int count = 0;
   for (; count < trials; count++) {
@@ -444,8 +413,7 @@ int main (int argc, char *argv[]) {
     if (tm1 < min_tm1) min_tm1 = tm1;
     tm += wall();
 
-    rr += r;
-  }
+    rr += r; }
 
   tm /= count;
   rr /= count;
@@ -459,5 +427,5 @@ int main (int argc, char *argv[]) {
 
   free(A);
 
-  return 0;
-}
+  return 0; }
+
