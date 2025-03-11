@@ -224,19 +224,8 @@ int main (int argc, char *argv[]) {
     vec ss = abs(eval(s, vec{0,1,2,3}));
     println("abs(s(0,1,2,3)): = {}", ss); }
 
-    /*
-    {
-      using std::ranges::views::zip;
-      using std::ranges::views::iota;
-      auto xx = zip(iota(0), s);
-      for (auto [a,b]: xx)
-        println("x = <{},{}>", a, b); } */
-
-  { vector<vec> r = { vec{ 1.0, 1.1, -2.0, -10.0 },
-                      vec{ 2.0, 1.2, -1.0, -7.0 },
-                      vec{ 3.0, 1.3,  0.0, -3.0 },
-                      vec{ 4.0, 1.4,  1.0,  4.0 },
-                      vec{ 5.0, 1.5,  2.0,  7.0 } };
+  { const int n = 5;
+    vector<vec> r(n);
 
     thread_local std::random_device rd;
     thread_local std::mt19937 rng(rd());
@@ -252,6 +241,7 @@ int main (int argc, char *argv[]) {
       vec a = min(r[i], r[j]), b = max(r[i],r[j]);
       r[i] = a, r[j] = b; };
     // sort.hs: sort 5
+    assert(n == 5);
     op(0,1); op(3,4); op(2,4); op(2,3); op(0,3); op(0,2); op(1,4); op(1,3); op(1,2);
 
     println("sorted roots:");
@@ -260,8 +250,11 @@ int main (int argc, char *argv[]) {
     for (auto v: r)
       cout << v << "\n";
 
-    polys f = (x - r[0]) * (x - r[1]) * (x - r[2]) * (x - r[3]) * (x - r[4]);
-    polys f1  = derivative(f);
+    polys f = {vec{} + 1}; // 1
+    for (auto z: r)
+      f = f * (x - z);
+
+    polys f1 = derivative(f);
     polys f2 = derivative(f1);
 
     println("=== finding min/max of f, using roots of f1 = f':");
@@ -270,15 +263,21 @@ int main (int argc, char *argv[]) {
     println("f2:"); dump(f2);
 
     println("degree(f1) = {}", degree(f1));
+
+
+    /*
+
+      (*) We may know we don't have repeated roots. (??)
+      (*) Our roots are within a known interval
+
+     */
+
     int nroots = degree(f1);
     for (int i = 0; i < nroots; i++) {
 
-      // TODO: start with a guess between adjacent roots... ?
+      // we'll just start at the LHS of our region...
 
       vec z = r[0]; // initial guess for Newton's iterations
-
-      // TODO: detect when f2(z) is too close to zero and reset somehow to
-      // a new guess for the root...
 
       for (int iter = 0; iter < 12; iter++) {
         cout << "z" << iter << " = " << z << "\n";
