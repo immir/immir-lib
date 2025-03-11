@@ -10,7 +10,6 @@ exit
 #include <iostream>
 #include <vector>
 #include <cassert>
-#include <ranges>
 #include <random>
 
 using std::vector, std::cout, std::ostream, std::string, std::print, std::println;
