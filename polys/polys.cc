@@ -131,6 +131,8 @@ polys operator* (auto a, const polys &f) {
 
 polys operator* (const polys &f, auto a) { return a*f; }
 
+polys X() { return { vec{}, vec{}+1 }; }
+
 int degree(const polys &f) { return (int) f.size()-1; }
 
 polys shift(const polys &f, int d) {
@@ -223,7 +225,7 @@ int main (int argc, char *argv[]) {
     seed = rd(); }
   println("seed = {}", seed);
 
-  polys x = { vec{}, vec{}+1 };
+  polys x = X();
   if (debug) {
     println("x:");
     dump(x);
@@ -293,9 +295,12 @@ int main (int argc, char *argv[]) {
     println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
     println(">> using critical_points(f):");
-    vector<vec> roots = critical_points(f, r[0]);
+    vector<vec> roots = critical_points(f, r[1]);
     for (auto &v: roots)
       cout << v << "\n";
+
+    /* Note: when we get a bad solution (in one or more lanes),
+       we could just move to another starting position... */
 
     polys f1 = derivative(f);
     polys g1{ f1[n-1] };
