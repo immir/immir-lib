@@ -4,6 +4,23 @@ g++ -O2 -g -std=gnu++23 -march=native -Wall -Wextra -Werror -o ${0%.*} $0 && ./$
 exit
 #endif
 
+/*
+  polys.cc
+  --------
+
+  Code for critical points of multiple polynomials using simd.  Do
+  Newton's method on the derivative in each lane, divide out the roots
+  found, repeat until done.
+
+  Testing seems to show that when the roots are in a restricted
+  interval around the origin, and distinct, the convergence is good
+  enough when just taking 0 as the initial guess.
+
+  Immir, 2025
+
+*/
+
+
 #include <cmath>
 #include <print>
 #include <format>
@@ -22,7 +39,7 @@ using std::min, std::max;
 using vec = double __attribute__((__vector_size__(N*sizeof(double))));
 using polys = vector<vec>;
 const double ε = 1e-15;
-
+bool verbose = false;
 
 template<typename T>
 ostream& operator<<(ostream& os, const vector<T>& a) {
@@ -51,14 +68,14 @@ void dump (polys f) {
     for (int j = d-1; j >= 0; j--) {
       double c = f[j][i];
       if (c == 0) continue;
-      bool neg = c < 0;
-      if (neg) print(" - ");
+      if (c < 0) print(" - ");
       else if (!first) print(" + ");
-      if (fabs(c) != 1 || j == 0) print("{}", fabs(c));
-      if (j == 1) print(" x");
-      else if (j > 1) print(" x^{}", j);
+      c = fabs(c);
+      if (c != 1 || j == 0) print("{}", c);
+      if (j == 1) print(" * x");
+      else if (j > 1) print(" * x^{}", j);
       first = false; }
-    println(); } }
+    println(""); } }
 
 vec abs(vec x) {
   vec y;
@@ -173,8 +190,10 @@ vector<vec> critical_points(polys f, vec z0) {
   while (degree(f1) > 0) {
 
     vec z = z0;
-    for (int iter = 0; iter < 12; iter++)
+    for (int iter = 0; iter < 16; iter++) {
       z = z - eval(f1,z) / eval(f2,z);
+      if (verbose)
+        println("iter = {}, z = {}", iter, z); }
 
     // TODO: check convergence
 
@@ -193,66 +212,79 @@ vector<vec> critical_points(polys f) {
 
 int main (int argc, char *argv[]) {
 
-  (void) argv[argc-1];
+  while (++argv, --argc) putenv(*argv);
+
+  long seed  = atol(getenv("seed")    ?: "0");
+  bool debug = atoi(getenv("debug")   ?: "0");
+  verbose    = atoi(getenv("verbose") ?: "0");
+
+  if (seed == 0) {
+    std::random_device rd;
+    seed = rd(); }
+  println("seed = {}", seed);
 
   polys x = { vec{}, vec{}+1 };
-  println("x:");
-  dump(x);
+  if (debug) {
+    println("x:");
+    dump(x);
 
-  polys w = (x*x) - vec{0,1,2,3};
-  println("w:");
-  dump(w);
+    polys w = (x*x) - vec{0,1,2,3};
+    println("w:");
+    dump(w);
 
-  polys x23 = 2.0*x + 3;
-  println("2*x+3:");
-  dump(x23);
+    polys x23 = 2.0*x + 3;
+    println("2*x+3:");
+    dump(x23);
 
-  polys f = { vec{ 1, 2, 3, 4},
-              vec{ 5, -6, 7, 8},
-              vec{ 2, 3, -2, 4},
-              vec{ -5, 4, 3, 2} };
+    polys f = { vec{ 1, 2, 3, 4},
+                vec{ 5, -6, 7, 8},
+                vec{ 2, 3, -2, 4},
+                vec{ -5, 4, 3, 2} };
+    println("f:");
+    dump(f);
 
-  println("f:");
-  dump(f);
+    polys g = derivative(f);
+    println("g = derivative(f):");
+    dump(g);
 
-  polys g = derivative(f);
-  println("g = derivative(f):");
-  dump(g);
+    polys gg = antiderivative(g);
+    println("gg = antiderivative(g):");
+    dump(gg);
 
-  polys gg = antiderivative(g);
-  println("gg = antiderivative(g):");
-  dump(gg);
+    println("f+g:");
+    dump(f+g);
 
-  println("f+g:");
-  dump(f+g);
+    { polys z = { -vec{1,2,3,4}, vec{} + 1 };
+      println("z:");
+      dump(z); }
 
-  { polys z = { -vec{1,2,3,4}, vec{} + 1 };
-    println("z:");
-    dump(z); }
+    { vec h = abs(f[0] * g[1]);
+      println("h = {}", h); }
 
-  { vec h = abs(f[0] * g[1]);
-    println("h = {}", h); }
+    { polys h2 = f * g;
+      println("h2 = f * g:");
+      dump(h2); }
 
-  { polys h2 = f * g;
-    println("h2 = f * g:");
-    dump(h2); }
+    { polys s = x*x + 2*x - 3;
+      println("s:");
+      dump(s);
 
-  { polys s = x*x + 2*x - 3;
-    println("s:");
-    dump(s);
+      vec ss = abs(eval(s, vec{0,1,2,3}));
+      println("abs(s(0,1,2,3)): = {}", ss); }
+  }
 
-    vec ss = abs(eval(s, vec{0,1,2,3}));
-    println("abs(s(0,1,2,3)): = {}", ss); }
+  { // now do an actual computation
 
-  { const int n = 5;
+    const int n = 6; // degree(f) = n-1
     vector<vec> r(n);
 
-    thread_local std::random_device rd;
-    thread_local std::mt19937 rng(rd());
+    std::mt19937 rng(seed);
     std::uniform_real_distribution<> dist(-10.0, 10.0);
     for (auto &row: r)
       for (int i = 0; i < N; i++)
         row[i] = dist(rng);
+
+    // we could sort these (using a circuit from sort.hs)
 
     polys f{ vec{}+1 };
     for (auto z: r)
@@ -261,9 +293,22 @@ int main (int argc, char *argv[]) {
     println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
     println(">> using critical_points(f):");
-    vector<vec> roots = critical_points(f);
+    vector<vec> roots = critical_points(f, r[0]);
     for (auto &v: roots)
       cout << v << "\n";
+
+    polys f1 = derivative(f);
+    polys g1{ f1[n-1] };
+    for (auto &z: roots)
+      g1 = g1 * (x - z);
+    println("f1:"); dump(f1);
+    println("g1:"); dump(g1);
+    polys h1 = f1 - g1;
+    double err = 0;
+    for (auto &v: h1)
+      for (int i = 0; i < N; i++)
+        err = max(err, abs(v[i]));
+    println("L1-err = {}\n", err);
 
   }
 
