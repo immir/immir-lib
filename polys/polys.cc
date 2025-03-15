@@ -71,7 +71,7 @@ void dump (polys f) {
       if (c < 0) print(" - ");
       else if (!first) print(" + ");
       c = fabs(c);
-      if (c != 1 || j == 0) print("{}", c);
+      if (c != 1 || j == 0) print("{:.8}", c);
       if (j == 1) print(" * x");
       else if (j > 1) print(" * x^{}", j);
       first = false; }
