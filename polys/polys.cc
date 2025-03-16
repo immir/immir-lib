@@ -64,18 +64,18 @@ void dump (polys f) {
   int d = f.size();
   for (int i = 0; i < N; i++) {
     bool first = true;
-    print("lane {}: ", i);
+    if (i==0) print("[ "); else print("  ");
     for (int j = d-1; j >= 0; j--) {
       double c = f[j][i];
       if (c == 0) continue;
       if (c < 0) print(" - ");
       else if (!first) print(" + ");
       c = fabs(c);
-      if (c != 1 || j == 0) print("{:.8}", c);
+      print("{:.8}", c);
       if (j == 1) print(" * x");
       else if (j > 1) print(" * x^{}", j);
       first = false; }
-    println(""); } }
+    if (i == N-1) println(" ];"); else println(","); } }
 
 vec abs(vec x) {
   vec y;
