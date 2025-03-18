@@ -183,23 +183,18 @@ vec eval(polys f, vec x) {
   return z; }
 
 vector<vec> critical_points(polys f, vec z0) {
-  // find critical points of polys in f[] using Newton iterations with
-  // starting values in z0[]
+  // find critical points of N polys in f[] using Newton iterations with
+  // N starting values in z0[]
   vector<vec> roots; // return value
   polys f1 = derivative(f);
   polys f2 = derivative(f1);
-  polys x = { vec{}, vec{}+1 };
+  polys x = X();
   while (degree(f1) > 0) {
 
     vec z = z0;
-    for (int iter = 0; iter < 16; iter++) {
+    for (int iter = 0; iter < 16; iter++)
       z = z - eval(f1,z) / eval(f2,z);
-      if (verbose)
-        println("iter = {}, z = {}", iter, z); }
 
-    // TODO: check convergence
-
-    // z is a collection of roots of f'
     roots.append(z);
 
     // remove these roots for next iteration
