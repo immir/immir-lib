@@ -9,18 +9,21 @@ exit
   --------
 
   Code for critical points of multiple polynomials using simd.  Do
-  Newton's method on the derivative in each lane, divide out the roots
-  found, repeat until done.
+  Laguerre's method on the derivative in each lane, divide out the
+  roots found, repeat until done, then polish against the original f'.
 
-  Testing seems to show that when the roots are in a restricted
-  interval around the origin, and distinct, the convergence is good
-  enough when just taking 0 as the initial guess.
+  f real-rooted => f' real-rooted (Rolle), and Laguerre converges
+  globally (cubically near simple roots) on real-rooted polynomials,
+  so any real starting point works; 0 is the default.
 
   Immir, 2025
 
 */
 
 
+#include <algorithm>
+#include <array>
+#include <cfloat>
 #include <cmath>
 #include <print>
 #include <format>
@@ -113,7 +116,7 @@ polys operator+ (const polys &f, auto a) { polys g = f; g[0] += a; return g; }
 polys operator+ (auto a, const polys &f) { polys g = f; g[0] += a; return g; }
 
 polys operator- (const polys &f, auto a) { polys g = f; g[0] -= a; return g; }
-polys operator- (auto a, const polys &f) { polys g = f; g[0] -= a; return g; }
+polys operator- (auto a, const polys &f) { return -f + a; }
 
 polys operator* (const polys &f, const polys &g) {
   int deg = (f.size()-1) + (g.size()-1);
@@ -182,29 +185,171 @@ vec eval(polys f, vec x) {
     z += xx * f[i];
   return z; }
 
-vector<vec> critical_points(polys f, vec z0) {
-  // find critical points of N polys in f[] using Newton iterations with
-  // N starting values in z0[]
-  vector<vec> roots; // return value
-  polys f1 = derivative(f);
-  polys f2 = derivative(f1);
-  polys x = X();
-  while (degree(f1) > 0) {
+struct horner3 { vec p, dp, ddp, abs_sum; };
 
-    vec z = z0;
-    for (int iter = 0; iter < 16; iter++)
-      z = z - eval(f1,z) / eval(f2,z);
+// p(x), p'(x), p''(x) in a single Horner pass, plus sum |a_i| |x|^i
+// (the scale of the rounding error in p)
+horner3 eval_with_derivatives(const polys &f, const vec x) {
+  assert(degree(f) >= 0);
+  const vec ax = abs(x);
+  vec p = f.back(), dp{}, ddp{}, abs_sum = abs(f.back());
+  for (int i = degree(f) - 1; i >= 0; i--) {
+    ddp     = ddp * x + dp;
+    dp      = dp  * x + p;
+    p       = p   * x + f[i];
+    abs_sum = abs_sum * ax + abs(f[i]); }
+  return { p, dp, 2 * ddp, abs_sum }; }
 
+bool all_lanes(const auto mask) {
+  bool ok = true;
+  for (int i = 0; i < N; i++) ok &= mask[i] != 0;
+  return ok; }
+
+// Laguerre correction dz (so z_next = z - dz).  For real-rooted f the
+// radicand (n-1)(nH - G^2) is >= 0 in exact arithmetic; clamp rounding.
+// Lanes where |p(z)| is within the Horner rounding bound 2n eps sum|a_i||z|^i
+// are a root to working precision and get dz = 0.
+vec laguerre_step(const polys &f, const vec z) {
+  const int n = degree(f);
+  assert(n >= 1);
+  const auto [p, dp, ddp, abs_sum] = eval_with_derivatives(f, z);
+  const vec G = dp / p;
+  const vec H = G * G - ddp / p;
+  const vec radicand = (n - 1) * (n * H - G * G);
+  vec denom;
+  for (int i = 0; i < N; i++)
+    denom[i] = G[i] + std::copysign(std::sqrt(std::max(0.0, radicand[i])), G[i]);
+  return abs(p) <= 2 * n * DBL_EPSILON * abs_sum ? vec{} : n / denom; }
+
+const int max_laguerre_iter = 64;
+const double root_tol = 1e-14;
+
+// iterate until every lane has |dz| <= tol (1 + |z|) (or is at the rounding
+// floor, dz = 0); NaN lanes never pass
+vec laguerre_root(const polys &f, vec z) {
+  for (int iter = 0; iter < max_laguerre_iter; iter++) {
+    const vec dz = laguerre_step(f, z);
+    z -= dz;
+    if (all_lanes(abs(dz) <= root_tol * (1 + abs(z))))
+      return z; }
+  std::println(stderr, "warning: Laguerre did not converge in {} iterations, z = {}",
+               max_laguerre_iter, z);
+  std::fflush(stderr);
+  return z; }
+
+vector<vec> critical_points(const polys &f, const vec z0) {
+  // critical points of the N polys in f[] (one per lane), assumed
+  // real-rooted, so Laguerre converges globally from any real z0.
+  // Roots found on the deflated f' are polished against the original.
+  const polys f1 = derivative(f);
+  const polys x = X();
+  vector<vec> roots;
+  for (polys g = f1; degree(g) > 0; ) {
+    const vec z = laguerre_root(g, z0);
     roots.append(z);
-
-    // remove these roots for next iteration
-    f1 = f1 / (x - z);
-    f2 = derivative(f1); }
-
+    g = g / (x - z); }
+  assert((int) roots.size() == degree(f1));
+  for (auto &z: roots)
+    z = laguerre_root(f1, z);
   return roots; }
 
-vector<vec> critical_points(polys f) {
+vector<vec> critical_points(const polys &f) {
   return critical_points(f, vec{}); }
+
+
+/*
+  Special case: f given by its roots, f = prod (x - r_i), all real.
+
+  After sorting, Rolle puts exactly one critical point strictly inside
+  each gap (r_k, r_{k+1}); it is the zero of the log-derivative
+
+      g(x) = f'/f = sum_i 1/(x - r_i),
+
+  which is strictly decreasing on each gap (g' = -sum 1/(x - r_i)^2 < 0).
+  So every gap is solved independently by Newton safeguarded with the
+  bracket: no coefficients, no deflation, no error carried between roots.
+
+  Start point: keep the two poles of the gap exactly and freeze the rest
+  of g at the midpoint m, C = sum_{i != k,k+1} 1/(m - r_i).  Then
+  1/(x-a) + 1/(x-b) + C = 0 with x = a + tau, w = b - a gives
+  C tau^2 + (2 - C w) tau - w = 0, whose root in (0, w) is (stably)
+
+      tau = 2w / (2 - C w + sqrt(4 + C^2 w^2)).
+*/
+
+template <int n> using roots_t = std::array<vec, n>;
+
+// per-lane sort by odd-even transposition network: branch-free, lanes independent
+template <int n>
+roots_t<n> sorted(roots_t<n> r) {
+  for (int pass = 0; pass < n; pass++)
+    for (int i = pass & 1; i + 1 < n; i += 2) {
+      const vec lo = min(r[i], r[i+1]), hi = max(r[i], r[i+1]);
+      r[i] = lo, r[i+1] = hi; }
+  return r; }
+
+template <int n>
+struct log_derivative_t { vec g, dg; };
+
+template <int n>
+log_derivative_t<n> log_derivative(const roots_t<n> &r, const vec x) {
+  vec g{}, dg{};
+  for (const vec ri: r) {
+    const vec t = 1.0 / (x - ri);
+    g += t;
+    dg -= t * t; }
+  return { g, dg }; }
+
+template <int n>
+vec two_pole_start(const roots_t<n> &r, const int k) {
+  const vec a = r[k], b = r[k+1], w = b - a, m = (a + b) / 2;
+  vec C{};
+  for (int i = 0; i < n; i++)
+    if (i != k && i != k+1) C += 1.0 / (m - r[i]);
+  const vec Cw = C * w, disc = 4 + Cw * Cw;
+  vec root;
+  for (int j = 0; j < N; j++) root[j] = std::sqrt(disc[j]);
+  return a + 2 * w / (2 - Cw + root); }
+
+template <int n>
+struct critical_points_result { std::array<vec, n-1> points; int iterations; };
+
+// critical points of prod (x - r_i), ascending in each lane; a double root
+// (zero-width gap) is itself the critical point
+template <int n>
+critical_points_result<n> critical_points_from_roots(const roots_t<n> &roots) {
+  static_assert(n >= 2);
+  const roots_t<n> r = sorted<n>(roots);
+  std::array<vec, n-1> lo, hi, x;
+  for (int k = 0; k < n-1; k++) {
+    lo[k] = r[k], hi[k] = r[k+1];
+    assert(all_lanes(lo[k] <= hi[k]));
+    x[k] = lo[k] == hi[k] ? lo[k] : two_pole_start<n>(r, k); }
+
+  for (int iter = 1; iter <= max_laguerre_iter; iter++) {
+    bool done = true;
+    for (int k = 0; k < n-1; k++) {
+      const auto [g, dg] = log_derivative<n>(r, x[k]);
+      lo[k] = g > 0 ? x[k] : lo[k];
+      hi[k] = g < 0 ? x[k] : hi[k];
+      const vec newton = x[k] - g / dg;
+      const vec stepped = (newton >= lo[k]) & (newton <= hi[k]) ? newton : (lo[k] + hi[k]) / 2;
+      const vec next = (g == 0) | (lo[k] == hi[k]) ? x[k] : stepped;
+      done &= all_lanes(abs(next - x[k]) <= root_tol * (1 + abs(next)));
+      x[k] = next; }
+    if (done) return { x, iter }; }
+
+  std::println(stderr, "warning: critical_points_from_roots did not converge in {} iterations",
+               max_laguerre_iter);
+  std::fflush(stderr);
+  return { x, max_laguerre_iter }; }
+
+// f(c) = prod (c - r_i), one multiply per root
+template <int n>
+vec eval_from_roots(const roots_t<n> &r, const vec c) {
+  vec v = vec{} + 1;
+  for (const vec ri: r) v *= c - ri;
+  return v; }
 
 
 int main (int argc, char *argv[]) {
@@ -290,7 +435,7 @@ int main (int argc, char *argv[]) {
     println("=== finding min/max of f, using roots of f1 = f':");
     println("f:"); dump(f);
     println(">> using critical_points(f):");
-    vector<vec> roots = critical_points(f, r[1]);
+    vector<vec> roots = critical_points(f);
     for (auto &v: roots)
       cout << v << "\n";
 
@@ -309,6 +454,19 @@ int main (int argc, char *argv[]) {
       for (int i = 0; i < N; i++)
         err = max(err, abs(v[i]));
     println("L1-err = {}\n", err);
+
+    println(">> using critical_points_from_roots(r):");
+    roots_t<n> ra;
+    std::ranges::copy(r, ra.begin());
+    const auto [c, iterations] = critical_points_from_roots<n>(ra);
+    roots_t<n-1> laguerre_sorted;
+    std::ranges::copy(roots, laguerre_sorted.begin());
+    laguerre_sorted = sorted<n-1>(laguerre_sorted);
+    double diff = 0;
+    for (int k = 0; k < n-1; k++) {
+      println("{}   f(c) = {}", c[k], eval_from_roots<n>(ra, c[k]));
+      diff = max(diff, max(abs(c[k] - laguerre_sorted[k]) / (1 + abs(c[k])))); }
+    println("iterations = {}, max rel diff vs Laguerre = {}", iterations, diff);
 
   }
 
