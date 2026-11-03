@@ -7,9 +7,9 @@
 \usepackage[skins,minted]{tcolorbox}
 \definecolor{mintbg}{gray}{0.93}
 \usemintedstyle{tango}
-\setminted[magma.py:Magma -x]{mathescape=true}
+\setminted[magma.py:Magma]{mathescape=true}
 \newtcblisting{magma}[2][]{#1,title=#2,
-    listing engine=minted, minted language=magma.py:Magma -x,
+    listing engine=minted, minted language=magma.py:Magma,
     enhanced, listing only, fonttitle=\small,
     colback=mintbg, colbacktitle=white, coltitle=black,
     titlerule=1pt, boxrule=1pt,
