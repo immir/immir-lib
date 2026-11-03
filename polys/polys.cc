@@ -30,6 +30,8 @@ exit
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <chrono>
+#include <cstdint>
 #include <random>
 
 using std::vector, std::cout, std::ostream, std::string, std::print, std::println;
@@ -352,6 +354,122 @@ vec eval_from_roots(const roots_t<n> &r, const vec c) {
   return v; }
 
 
+/*
+  Jackpot search.
+
+  Lane i holds a polynomial f_i in its own coordinate x_i, and the norm on
+  the fixed box B = prod [lo_i, hi_i] is prod_i f_i(x_i).  It separates:
+
+      max_B |norm| = prod_i M_i,   M_i = max_{[lo_i, hi_i]} |f_i|,
+
+  and a jackpot is prod_i M_i < 1.  f_i is real-rooted, so |f_i| has one
+  peak per gap (at its critical point) and is monotone outside the roots:
+  M_i = max(|f_i(lo_i)|, |f_i(hi_i)|, |f_i(c)| for critical c in the box).
+
+  Screen: |f_i(x)| <= M_i for every x in the box, so the endpoints and the
+  two-pole start points give a lower bound R_i <= M_i at a few multiplies
+  per point.  prod R_i >= 1 + screen_margin rejects a batch for certain
+  (margin >> rounding of the N n products); only survivors get the full
+  critical-point solve.  Stage 0 tries the endpoints alone (no sort, no
+  divisions); stage 1 adds the start points.
+*/
+
+struct box_t { vec lo, hi; };
+
+const double screen_margin = 1e-12;
+const double borderline_tol = 1e-9;
+
+double lane_product(const vec v) {
+  double p = 1;
+  for (int i = 0; i < N; i++) p *= v[i];
+  return p; }
+
+template <int n>
+vec abs_eval_from_roots(const roots_t<n> &r, const vec x) {
+  return abs(eval_from_roots<n>(r, x)); }
+
+template <int n>
+vec endpoint_max(const roots_t<n> &r, const box_t &box) {
+  return max(abs_eval_from_roots<n>(r, box.lo), abs_eval_from_roots<n>(r, box.hi)); }
+
+// lower bound R_i <= M_i per lane; r must be sorted
+template <int n>
+vec screen_lower_bound(const roots_t<n> &r, const box_t &box) {
+  vec m = endpoint_max<n>(r, box);
+  for (int k = 0; k < n-1; k++) {
+    const vec x = two_pole_start<n>(r, k);
+    const auto inside = (x > box.lo) & (x < box.hi);
+    m = inside ? max(m, abs_eval_from_roots<n>(r, x)) : m; }
+  return m; }
+
+// M_i = max over the box of |f_i| per lane
+template <int n>
+vec max_abs_on_box(const roots_t<n> &r, const box_t &box) {
+  vec m = endpoint_max<n>(r, box);
+  for (const vec c: critical_points_from_roots<n>(r).points) {
+    const auto inside = (c > box.lo) & (c < box.hi);
+    m = inside ? max(m, abs_eval_from_roots<n>(r, c)) : m; }
+  return m; }
+
+// counter-based RNG: batch b is regenerated from (seed, b) alone
+uint64_t splitmix64(uint64_t z) {
+  z += 0x9e3779b97f4a7c15;
+  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+  z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+  return z ^ (z >> 31); }
+
+template <int n>
+roots_t<n> batch_roots(const uint64_t seed, const uint64_t batch, const double rmax) {
+  const uint64_t base = splitmix64(seed) + batch * (n * N);
+  roots_t<n> r;
+  for (int j = 0; j < n; j++)
+    for (int i = 0; i < N; i++)
+      r[j][i] = rmax * (2 * ((splitmix64(base + j * N + i) >> 11) * 0x1p-53) - 1);
+  return r; }
+
+struct search_stats { long batches = 0, endpoint_rejects = 0, survivors = 0, jackpots = 0, borderline = 0,
+                      screen_misses = 0;
+                      double worst_screen_ratio = 1; };
+
+// check: also run the full solve on every batch, to confirm the screen
+// never rejects a jackpot and to measure how tight R_i is
+template <int n>
+search_stats jackpot_search(const uint64_t seed, const long count, const double rmax,
+                            const box_t &box, const bool check) {
+  search_stats st;
+  for (long b = 0; b < count; b++, st.batches++) {
+    const roots_t<n> unsorted = batch_roots<n>(seed, b, rmax);
+    if (!check && lane_product(endpoint_max<n>(unsorted, box)) >= 1 + screen_margin) {
+      st.endpoint_rejects++;
+      continue; }
+    const roots_t<n> r = sorted<n>(unsorted);
+    const double lower = lane_product(screen_lower_bound<n>(r, box));
+    const bool rejected = lower >= 1 + screen_margin;
+
+    if (check) {
+      const double full = lane_product(max_abs_on_box<n>(r, box));
+      if (rejected && full < 1) {
+        st.screen_misses++;
+        std::println("SCREEN MISS batch {} lower {} full {}", b, lower, full);
+        std::fflush(stdout); }
+      st.worst_screen_ratio = std::max(st.worst_screen_ratio, full / lower); }
+
+    if (rejected) continue;
+    st.survivors++;
+    const vec M = max_abs_on_box<n>(r, box);
+    const double norm_max = lane_product(M);
+    if (std::fabs(norm_max - 1) < borderline_tol) {
+      st.borderline++;
+      std::println("BORDERLINE batch {} max|norm| = {:.17g} -- verify exactly", b, norm_max);
+      std::fflush(stdout); }
+    if (norm_max < 1) {
+      st.jackpots++;
+      std::println("JACKPOT batch {} max|norm| = {:.17g}  M = {}", b, norm_max, M);
+      for (const vec rj: r) std::println("    roots {}", rj);
+      std::fflush(stdout); } }
+  return st; }
+
+
 int main (int argc, char *argv[]) {
 
   while (++argv, --argc) putenv(*argv);
@@ -364,6 +482,26 @@ int main (int argc, char *argv[]) {
     std::random_device rd;
     seed = rd(); }
   println("seed = {}", seed);
+
+  if (const long batches = atol(getenv("batches") ?: "0"); batches > 0) {
+    constexpr int n = 6;
+    const double rmax = atof(getenv("rmax") ?: "1");
+    const box_t box{ vec{} + atof(getenv("lo") ?: "-0.5"), vec{} + atof(getenv("hi") ?: "0.5") };
+    const bool check = atoi(getenv("check") ?: "0");
+    assert(all_lanes(box.lo < box.hi));
+    println("jackpot search: {} batches, n = {}, roots in [-{}, {}], box [{}, {}]{}",
+            batches, n, rmax, rmax, box.lo[0], box.hi[0], check ? ", check mode" : "");
+    std::fflush(stdout);
+    const auto t0 = std::chrono::steady_clock::now();
+    const search_stats st = jackpot_search<n>(seed, batches, rmax, box, check);
+    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    println("batches {}  endpoint rejects {}  survivors {}  jackpots {}  borderline {}  {:.1f} ns/batch",
+            st.batches, st.endpoint_rejects, st.survivors, st.jackpots, st.borderline,
+            1e9 * secs / st.batches);
+    if (check)
+      println("check: screen misses {}  worst M/R product ratio {:.17g}",
+              st.screen_misses, st.worst_screen_ratio);
+    return st.screen_misses == 0 ? 0 : 1; }
 
   polys x = X();
   if (debug) {

@@ -5,11 +5,12 @@ Immir — 2026-11-02 22:47 EST
 Laguerre's method replaced fixed-count Newton and cut the failure rate from
 13.6% of batches to none in 5000 seeds. Since we start from the roots of f, a
 new roots-based solver (added beside Laguerre, which is kept) is 7× faster and
-far more accurate. The next big win, for a billion runs with about a dozen
-jackpots, is a cheap screen that cannot miss a jackpot, with full precision only
-on survivors.
+far more accurate. For a billion batches with about a dozen jackpots, the
+jackpot search screens with rigorous lower bounds (box endpoints, then
+start points) and solves fully only on survivors: about 18 ns per batch in a
+synthetic test, with no missed jackpots.
 
-Updated 2026-11-02: roots-based solver section added.
+Updated 2026-11-02 (same day): roots-based solver and jackpot search added.
 
 ## Review findings
 
@@ -111,64 +112,76 @@ warnings from either over 5000 seeds. Benchmark harness: `h.cc` in that
 session's scratchpad (includes `polys.cc` with `main` renamed).
 
 At 266 ns the cost is roughly what ~180 vector divisions per batch take, so
-further gains come from fewer or cheaper divisions (next section).
+further gains come from fewer or cheaper divisions; the jackpot search below
+avoids most of them.
 
-## Jackpot speed-up plan
+## Jackpot search (implemented)
 
-At a jackpot rate near 1e-8, almost all work should be a cheap screen that never
-misses a jackpot. Full precision runs only on survivors. The roots-based solver
-above is implemented; the screen is not.
+Jackpot condition: lane i holds f_i in its own coordinate x_i over a fixed box
+B = ∏[loᵢ, hiᵢ] (the fundamental domain; dimension = number of lanes), the norm
+is ∏ᵢ fᵢ(xᵢ), and a jackpot is max_B |norm| < 1. The maximum separates:
 
-### Screen, then verify
+```latex
+\max_B \Big|\prod_i f_i(x_i)\Big| = \prod_i M_i, \qquad
+M_i = \max\big(|f_i(lo_i)|,\ |f_i(hi_i)|,\ |f_i(c)| \text{ for critical } c \in (lo_i, hi_i)\big)
+```
 
-1. Screen in float32: twice the lanes (8 on AVX2, 16 on AVX-512), fixed
-   iteration count, no convergence checks, no polishing, no warnings,
-   branch-free.
-2. Make the screen one-sided: widen the jackpot threshold by more than the
-   screen's error bound, so a jackpot always passes and only extra candidates
-   leak through.
-3. Reject whole vectors at once: one any-lane test per vector; at a 1e-8 hit
-   rate nearly every vector stops there.
-4. Verify survivors with the double-precision Laguerre code; print and flush
-   jackpots immediately.
-5. Store nothing for rejects: seed a counter-based RNG (e.g. Philox) by batch
-   index, so a candidate is regenerated from its index and the hot loop never
-   writes memory.
+since |fᵢ| has one peak per gap between roots and is monotone outside them.
+Any point x in the box gives |fᵢ(x)| ≤ Mᵢ, so point evaluations are rigorous
+lower bounds: a batch whose lower-bound product is ≥ 1 + 1e-12 is certainly not
+a jackpot (the margin is far above the rounding of 24 multiplies).
 
-### Screen on top of the roots-based solver
+| Stage | Computes | Cost | Rejects (synthetic test) |
+| --- | --- | --- | --- |
+| 0 | \|fᵢ\| at the box endpoints; no sort, no divisions | ~3 ns | 99.94% at rmax = 4, 99.998% at rmax = 5 |
+| 1 | sort + \|fᵢ\| at two-pole start points inside the box | ~80 ns | nearly all the rest: survivors ≈ jackpots (1501 vs 1491) |
+| 2 | full `critical_points_from_roots`, exact Mᵢ, ∏Mᵢ < 1 | ~270 ns | final decision |
 
-1. Fixed iteration count, no convergence test: with the two-pole start, 3–4
-   iterations probably reach screening accuracy (to be measured).
-2. float32: twice the lanes and cheaper division.
-3. Bound before iterating: if the jackpot test is on critical values, gap
-   endpoints, the two-pole start and the monotonicity of g give interval bounds
-   on each f(c), so many batches may be rejected with no Newton steps.
-4. Re-run survivors with the double-precision `critical_points_from_roots`.
+- Total ≈ 18 ns per batch, of which ≈ 13.6 ns is the test RNG, so ≈ 18 s per
+  1e9 batches on one core.
+- Jackpots print batch index, max|norm|, Mᵢ and roots, flushed.
+  |∏Mᵢ − 1| < 1e-9 prints a flushed `BORDERLINE … verify exactly` line.
+- Roots from a counter-based RNG (splitmix64 of (seed, batch)), so any batch is
+  regenerated from its index. Replace `batch_roots` with the real generator.
+- Usage: `./polys batches=1000000000 rmax=5 lo=-0.5 hi=0.5 seed=…`; `check=1`
+  also runs the full solve on every batch. Without `batches=` the old demo runs.
+- Code: `screen_lower_bound`, `max_abs_on_box`, `jackpot_search` in `polys.cc`.
 
-### Engineering either way
+Validation: check mode over 5M batches (rmax = 3, 4, 5) found 0 jackpots the
+screen rejected; staged and check-mode runs gave identical jackpot lists (11,417
+at rmax = 3, 159 at rmax = 4, same seed).
 
-- Fixed degree: `std::array<vec, D+1>` (or root arrays), structure-of-arrays
-  layout, no heap.
-- Horner evaluation; synthetic division qₖ = fₖ₊₁ + z·qₖ₊₁ if staying with
-  coefficients.
-- Lane count from a `constexpr`, not `#define N 4`.
-- Split the billion across cores; there is no shared state.
-- Estimated one to two orders of magnitude over the current `vector<vec>` code
-  from engineering alone; not yet measured.
+Caveats:
+
+- Test data is synthetic (roots uniform in [−rmax, rmax], box [−0.5, 0.5]⁴);
+  the stage-0 rate depends on the real root distribution relative to the box.
+  Re-run once with `check=1` on the real generator.
+- |norm| is assumed (absolute values taken).
+- Stage 1's bound is up to 1.3–1.7× below the true maximum in the worst case
+  (critical point just inside the box edge, start point just outside); that
+  costs extra full solves, not correctness.
+- Proof-grade jackpots need a rigorous upper bound on each Mᵢ: bound |f| on the
+  final bracket using f′(c) ≈ 0, or re-check the few cases exactly in Magma.
+
+## Further speed-ups
+
+- OpenMP over batches (independent; 24 cores here): 1e9 in about a second.
+- AVX-512 is available but the 4-lane `vec` uses half of each 8-double
+  register: pack two batches per vector.
+- Fixed-degree `std::array` rewrite, Horner and synthetic division for the
+  coefficient-based Laguerre path, if it stays in use.
 
 ## Open questions and next steps
 
-The screen design depends on the jackpot condition.
-
-- [ ] What is the jackpot condition? (critical value below a threshold, two
-      critical points within δ, a critical point in a region, …)
+- [x] What is the jackpot condition? max over a fixed box of |∏ᵢ fᵢ(xᵢ)| < 1
+      (see Jackpot search).
 - [x] In the real workload, are the roots of f known, or only its coefficients?
       Roots are known.
-- [ ] Review and commit the Laguerre, `operator-` and roots-based solver changes
-      in `polys/polys.cc`
-- [ ] Measure the fixed iteration count the screen needs with the two-pole start
+- [x] Commit the Laguerre, `operator-` and roots-based solver changes
+- [ ] Plug in the real root generator and run once with `check=1`
+- [ ] Confirm |norm| (not signed norm) is the right condition
+- [ ] Rigorous verification of jackpots (bracket bound or exact Magma check)
 - [ ] Replace the `L1-err` check with a relative residual
       |f′(zᵢ)| / Σ|f′ₖ||zᵢ|ᵏ
 - [ ] Fixed-degree `std::array` rewrite with Horner and synthetic division
-- [ ] Build the float32 screen + double verify and benchmark against the
-      current code
+- [ ] OpenMP and two-batches-per-vector for AVX-512
