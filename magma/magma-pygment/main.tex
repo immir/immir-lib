@@ -13,7 +13,7 @@
 \usemintedstyle{lovelace}
 \definecolor{mintbg}{gray}{0.95}
 \setminted{bgcolor=mintbg, frame=lines, rulecolor=\color{gray!50}}
-\setminted[magma.py:Magma -x]{mathescape=true} % math mode in comments
+\setminted[magma.py:Magma]{mathescape=true} % math mode in comments
 
 \begin{document}
 \maketitle
@@ -39,7 +39,7 @@ knows how to contact him$\ldots$
 
 Some intrinsics from a small Magma package:
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 // file: intrin.m
 
 intrinsic '@' (x, f::RngUPolElt) -> .
@@ -81,7 +81,7 @@ end intrinsic;
 
 Some user code:
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 PSL27 := PermutationGroup< 8 | (2,3,5)(6,7,8), (1,2,4)(3,5,6) >;
 S := MatrixAlgebra< FiniteField(2), 3 |
        [ 0,1,0,  1,1,1,  0,0,1 ], [ 1,1,1,  0,1,1,  0,1,0 ] >;
@@ -101,7 +101,7 @@ d; // 8/9
 
 Transcript of a session:
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 > P<x> := PolynomialRing(Rationals());
 > f := x^3 + x + 1;
 > Evaluate(f,1);
@@ -129,50 +129,92 @@ true
 % ----------------------------------------------------------------------
 \section{Installation}
 
-There are at least 3 simple ways to use this ``package'' with the
-{\LaTeX} \texttt{minted} package. In all cases, you have to run with
-the \texttt{-shell-escape} to \LaTeX{}; \textit{e.g.,}
+These instructions are for \texttt{minted} version~3 or later (shipped
+with \TeX{}~Live 2024 onwards), which runs Pygments through its own
+sandboxed \texttt{latexminted} executable. As always with
+\texttt{minted}, \LaTeX{} must be run with \texttt{-shell-escape};
+\textit{e.g.,}
 %
 \begin{minted}{bash}
 bash$ pdflatex -shell-escape file.tex && xpdf file.pdf
 \end{minted}
 
 
-\subsection{Local copy of lexer}
+\subsection{Enable the lexer}
 
-Place the \texttt{magma.py} file in the working directory and use
+For security, \texttt{latexminted} refuses to load a custom lexer
+unless it has been explicitly whitelisted, by file name and SHA-256
+hash, in a configuration file \texttt{\textasciitilde/.latexminted\_config}
+(also searched: \texttt{\$XDG\_CONFIG\_HOME/latexminted/} and
+\texttt{\$TEXMFHOME}). The file is JSON:
+
+\begin{minted}{json}
+{
+  "custom_lexers": {
+    "magma.py": ["<sha256 of magma.py>"]
+  }
+}
+\end{minted}
+
+which can be generated with
+
+\begin{minted}{bash}
+bash$ printf '{ "custom_lexers": { "magma.py": ["%s"] } }\n' \
+        $(sha256sum magma.py | cut -d' ' -f1) > ~/.latexminted_config
+\end{minted}
+
+The hash must be updated whenever \texttt{magma.py} changes; otherwise
+\texttt{minted} stops with \textit{``check that SHA-256 hash is present
+and updated''}. A list of several hashes is accepted, so older and
+newer versions of the lexer may be enabled simultaneously.
+
+
+\subsection{Use the lexer}
+
+Place \texttt{magma.py} in the document's directory and name the lexer
+as \texttt{\textit{file}:\textit{class}}:
 
 \begin{minted}[escapeinside=||]{tex}
-  \begin{minted}{magma.py:Magma -x}
+  \begin{minted}{magma.py:Magma}
     // your magma code here
   \end{minted||}
 \end{minted}
 
-
-\subsection{Execute the lexer script}
-
-If you will be using a lot of \texttt{magma} code snippets, it is
-unpleasant to have to use the \texttt{magma.py:Magma -x} name over and
-over again. An alternative is to give the \texttt{magma.py} script
-execute permission, then in the preamble after loading \texttt{minted}
-do the following:
+To typeset {\LaTeX} math inside Magma comments (as in the examples
+above), enable \texttt{mathescape} for this lexer in the preamble:
 
 \begin{minted}{tex}
-  \renewcommand{\MintedPygmentize}{./magma.py}
+  \setminted[magma.py:Magma]{mathescape=true}
 \end{minted}
 
-Now your code segments can use the simpler \texttt{magma} format:
+If you will be using a lot of Magma snippets, it is unpleasant to
+type \texttt{magma.py:Magma} over and over again; instead define
+shorthands in the preamble with \texttt{minted}'s own commands,
+
+\begin{minted}{tex}
+  \newminted[magmacode]{magma.py:Magma}{}        % environment
+  \newmintinline[mg]{magma.py:Magma}{}           % inline: \mg|x^2 + 1|
+  \newmintedfile[magmafile]{magma.py:Magma}{}    % whole file
+\end{minted}
+
+after which one can write
 
 \begin{minted}[escapeinside=||]{tex}
-  \begin{minted}{magma}
+  \begin{magmacode}
     // your magma code here
-  \end{minted||}
+  \end{magmacode}
 \end{minted}
 
 
-\subsection{Install globally}
+\subsection{Older \texttt{minted} versions}
 
-Details coming later.
+\texttt{minted} 2.x called \texttt{pygmentize} directly and needs no
+configuration file; use the lexer name \texttt{magma.py:Magma -x}
+(the \texttt{-x} enables Pygments' escape handling, needed for
+\texttt{mathescape}). Alternatively, make \texttt{magma.py} executable
+and put \verb|\renewcommand{\MintedPygmentize}{./magma.py}| in the
+preamble; the script then acts as a drop-in \texttt{pygmentize}
+which maps the plain lexer name \texttt{magma} to this lexer.
 
 
 % ----------------------------------------------------------------------
@@ -206,7 +248,7 @@ Source code for the current version of \texttt{magma.py}.
 
 Here are some tests based on code extracted from various Magma packages.
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 intrinsic Conjugates(G::Grp, H::Grp: Limit := 10000000) -> {}
   {The set of conjugates of H by elements of G}
   require Type(G) eq Type(H) and H subset G:
@@ -252,7 +294,7 @@ intrinsic Bezoutian(H::HypGeomData) -> RngIntElt // e.g. [1,2,3],[5] -> 5
 
 Here are some examples for testing edge cases.
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 intrinsic myintrin1(G :: GrpMat[FldFin]) -> {}, [], {RngIntElt}
   { some documentation }
   return {}, [], 0; end intrinsic;
@@ -273,7 +315,7 @@ intrinsic myintrin3(G:: GrpMat : Degree := "All", Set := {}) -> BoolElt, {}
 Here are examples of valid Magma code that fail to format correctly;
 these examples are currently considered too extreme to worry about.
 
-\begin{minted}{magma.py:Magma -x}
+\begin{minted}{magma.py:Magma}
 // incorrectly matches braces within /* */ comment
 intrinsic junk(a) /* {} */ { docs }
   return a+1; end intrinsic;

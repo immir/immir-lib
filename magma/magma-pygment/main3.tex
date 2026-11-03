@@ -5,7 +5,6 @@
 \date{March 2023}
 
 \usepackage{minted}
-\renewcommand{\MintedPygmentize}{./magma.py}
 
 \begin{document}
 \maketitle
@@ -13,10 +12,10 @@
 % ----------------------------------------------------------------------
 \section*{Introduction}
 
-This is a minimal example using the executable \texttt{magma.py}
-script (NB: this one won't work in Overleaf).
+This is a minimal example using the custom lexer in \texttt{magma.py}
+(loaded via \texttt{magma.py:Magma}; needs \texttt{-shell-escape}).
 
-\begin{minted}{magma}
+\begin{minted}{magma.py:Magma}
 intrinsic '@' (x, f) -> .
   { Allow user to evaluate polynomials using usual notation: $f(x)$. }
   return Evaluate(f, x);
