@@ -1,30 +1,47 @@
 #!/bin/bash
+#
+# Immir <mjsmi36>, circa 2024
+# example usage:
+#
+#  locker
+#  locker i3lock
+#  idletime=600 locker    # 10 minutes instead of 5 for autolock
 
-lockcmd=${@:-i3lock --nofork}
-echo "lock command: $lockcmd"
-idletime=300
+DIR=/tmp/.locker_${USER}
+rm -rf $DIR && mkdir -p $DIR
+LOG=$DIR/log
+exec > $LOG 2>&1
 
-touch /tmp/.{,last_}input
+lockcmd=${@:-i3lock}
+idletime=${idletime:-300}
+
+echo "lockcmd = $lockcmd"
+echo "idletime = $idletime"
+
+LAST=$DIR/last_input
+THIS=$DIR/this_input
+touch $LAST $THIS
+
 cmd='stat --printf="%s"'
 t=0
 while true
 do
     echo idle running t=$t
 
-    timeout 1 xinput test-xi2 --root > /tmp/.input
-    if [[ `eval $cmd /tmp/.input` == `eval $cmd /tmp/.last_input` ]]
+    timeout 1 xinput test-xi2 --root > $THIS
+    if [[ `eval $cmd $THIS` == `eval $cmd $LAST` ]]
     then
         let t++
     else
         t=0
     fi
 
-    mv -f /tmp/.{,last_}input
+    mv -f $THIS $LAST
 
     if [[ $t -ge $idletime ]]
     then
         echo "user has gone idle - locking screen"
-        $lockcmd # should run in foreground, so suspends this script
+        $lockcmd # runs in foreground, so suspends this script
         t=0
     fi
 
