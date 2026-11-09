@@ -1,0 +1,162 @@
+
+alock++
+Immir <mjsmi36>, Dec 2025.
+
+This is a *heavily* modified version of alock, an X11 screen locker.
+It provides password progress dots, image and shaded-screen backgrounds,
+optional web backgrounds, and embedded terminal/ttyrec backgrounds.
+Configuration uses an INI file; an example appears below.
+
+
+Building
+--------
+
+Run from the source directory:
+
+  make
+
+This builds ./alock++ with PAM authentication and Xrandr multi-monitor
+support. WebKit support is disabled by default. No configure step is
+needed.
+
+To build without Xrandr support:
+
+  make clean
+  make ENABLE_XRANDR=0
+
+To enable HTML/CSS/JS backgrounds, install the WebKitGTK 4.0 and GTK+ 3
+development packages, including their pkg-config metadata, then run:
+
+  make clean
+  make ENABLE_WEBKIT=1
+
+The Makefile queries pkg-config for webkit2gtk-4.0 and gtk+-3.0. If these
+packages are installed in a nonstandard prefix, set PKG_CONFIG_PATH to
+its pkgconfig directory. The Makefile also retains optional search paths
+under local/ for manually supplied compatibility headers and metadata;
+that directory is not bundled or needed for the default build.
+
+Run make clean before changing feature flags: make does not track changes
+to compiler options. There is no install target; the executable is built
+in the source directory.
+
+
+Dependencies
+------------
+
+Default build:
+- A C compiler and make.
+- Headers and libraries for X11, Xext (including X Shape), Xrender,
+  Xrandr, and PAM, plus the system math library.
+- An X11 session and a working PAM service configuration at runtime.
+
+Xrandr can be disabled with ENABLE_XRANDR=0. Image loading uses the bundled
+stb_image.h; Imlib2 is no longer required.
+
+For Linux systems with the PAM runtime but no PAM development headers,
+etc/security/ contains fallback Linux-PAM headers. From the source
+directory, build the default configuration with:
+
+  make clean
+  make CFLAGS='-Wall -O2 -I. -idirafter ./etc' \
+       LIBS='-lX11 -lXext -lXrender -l:libpam.so.0 -lm -lXrandr'
+
+This uses GNU ld's exact-filename syntax to link the installed PAM runtime.
+See etc/README.md for details. The runtime library, PAM configuration,
+and authentication modules must still be installed.
+
+Optional:
+- Web backgrounds: WebKitGTK 4.0 and GTK+ 3 headers/libraries, pkg-config,
+  and their dependencies at build time; the corresponding runtime
+  libraries at runtime.
+- Terminal backgrounds: xterm (the default) or another terminal emulator
+  with embedding support, plus the program it will run. ttyplay is needed
+  only for ttyrec playback.
+
+
+Usage
+-----
+
+  ./alock++                                    # Basic lock with dots
+  ./alock++ -bg blank:color=black              # Black background
+  ./alock++ -bg image:file=/path/to/img.png    # Image background
+  ./alock++ -bg shade:shade=75                 # Shaded screen
+  ./alock++ -bg web:url=file:///path/to/anim.html  # WebKit (if enabled)
+  ./alock++ -bg term:cmd=top                   # Embedded terminal program
+  ./alock++ -bg 'term:cmd=ttyplay game.ttyrec' # ttyrec playback "screensaver"
+
+See ./alock++ -help for full documentation.
+
+
+Terminal background (-bg term)
+------------------------------
+
+Runs a real terminal emulator (xterm by default) as the lock screen,
+reparented into the lock window, running a command of your choice -- e.g.
+a ttyrec playback of NetHack as a screensaver. alock grabs the keyboard on
+the root window, so the embedded terminal never receives input: typing the
+password still unlocks, and the terminal can't be used to escape the lock.
+
+  Options (term:opt=val,opt=val,...):
+    cmd=<command>     Program to run inside the terminal (default: top).
+    cmdN=<command>    Per-monitor command; N is the monitor index in Xrandr
+                      order (cmd0, cmd1, ...). Monitors without an indexed
+                      command fall back to bare cmd=.
+    term=<template>   Emulator + embed flags, must contain %w (the window id).
+                      Default: xterm -into %w -fa Monospace -fs 18 ... -e
+                      Other emulators: 'st -w %w -e', 'urxvt -embed %w -e'.
+    bgcolor=<color>   Background color around the terminal (default: black).
+    fill=0|1          1: resize the terminal to fill its monitor;
+                      0 (default): center it at its natural size.
+    respawn=0|1       1 (default): relaunch the command when it exits, so a
+                      finite ttyrec loops. Rate-limited; gives up on a
+                      monitor after repeated immediate exits.
+
+  On a multi-monitor (Xrandr) setup each connected output gets its own
+  terminal. Best paired with '-input dots' (the dots float transparently
+  over the terminal via the X Shape extension) or '-input none'.
+
+  Examples:
+    ./alock++ -bg term                         # placeholder: xterm + top
+    ./alock++ -bg 'term:cmd=ttyplay g.ttyrec'  # same playback everywhere
+    ./alock++ -bg 'term:cmd0=ttyplay a.ttyrec,cmd1=ttyplay b.ttyrec'
+    ./alock++ -bg 'term:term=st -w %w -e,cmd=top,fill=1'
+
+  The ttyrec playback tool (e.g. ttyplay) is supplied separately; any
+  program that writes to the terminal works (top, cmatrix, etc.).
+
+  Config file (~/.alockrc) form:
+    [background]
+    module = term
+    cmd = ttyplay /path/to/nethack.ttyrec
+    fill = 1
+
+
+Configuration
+-------------
+
+The configuration file is $XDG_CONFIG_HOME/alock/config when that file
+exists, otherwise ~/.alockrc. Command-line module selections override
+those in the file.
+
+Example ~/.alockrc:
+
+  [auth]
+  module = pam
+
+  [background]
+  module = blank
+  color = black
+
+  [input]
+  module = dots
+  dot_placement = center_left
+  dot_radius = 5
+  dot_spacing = 10
+  dot_color = white
+  success_color = green
+  error_color = red
+
+Use ./alock++ -modules to list the modules compiled into your build.
+Image loading uses stb_image.h, despite the older Imlib2 wording still
+present in ./alock++ -help.
