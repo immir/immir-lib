@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=st+ -t st+ -e sh -c "command -v tmux >/dev/null 2>&1 && exec tmux new -A -s st+ || exec \\${SHELL:-/bin/sh}"
+TryExec=st+
+Icon=st+
+Terminal=false
+Categories=System;TerminalEmulator;
+Name=st+
+GenericName=Terminal
+Comment=st+ is a simple terminal implementation for X
+StartupWMClass=st-256color
